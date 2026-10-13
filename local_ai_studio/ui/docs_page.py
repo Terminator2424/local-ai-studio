@@ -10,7 +10,8 @@ from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
-from ..chat.engine import CHAT_MODELS, DEFAULT_MODEL, ChatEngine, Params
+from ..chat.engine import CHAT_MODELS, ChatEngine, Params
+from ..chat.store import load_prefs, update_prefs
 from ..core.errors import Cancelled
 from ..rag import ask
 from ..rag.index import EMBED_MODEL, DocIndex
@@ -98,7 +99,8 @@ class DocsPage(ctk.CTkFrame):
         self.question.bind("<Return>", self._on_enter)
         side = ctk.CTkFrame(top, fg_color="transparent")
         side.grid(row=0, column=1, padx=(10, 0), sticky="ns")
-        self.picker = ModelPicker(side, [m for m in CHAT_MODELS if "vl" not in m], DEFAULT_MODEL, width=300, wrap=300)
+        self.picker = ModelPicker(side, [m for m in CHAT_MODELS if "vl" not in m], load_prefs()["docs_model"],
+                                  lambda m: update_prefs({"docs_model": m}), width=300, wrap=300)
         self.picker.pack(pady=(0, 6), anchor="e")
         self.model_var = self.picker.var
         self.ask_btn = primary_button(side, "Preguntar", self._ask, width=300, height=34)

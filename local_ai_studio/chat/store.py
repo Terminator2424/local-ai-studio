@@ -159,7 +159,8 @@ def title_from(text: str, limit: int = 48) -> str:
 PREFS_PATH = CONV_DIR / "prefs.json"
 DEFAULT_MODEL = "llama3.1:8b"
 PREFS_VERSION = 2       # v2: el modelo predeterminado pasó a llama3.1:8b (las preferencias antiguas se actualizan una vez)
-DEFAULT_PREFS = {"prefs_version": PREFS_VERSION, "model": DEFAULT_MODEL, "temperature": 0.7, "top_p": 0.9,
+DEFAULT_PREFS = {"prefs_version": PREFS_VERSION, "model": DEFAULT_MODEL, "docs_model": DEFAULT_MODEL, "study_model": DEFAULT_MODEL,
+                 "temperature": 0.7, "top_p": 0.9,
                  "max_tokens": 1024, "num_ctx": 8192, "read_roots": [],
                  "system_prompt": ROLES[DEFAULT_ROLE][1]}
 
@@ -190,6 +191,15 @@ def load_prefs(path: Path = PREFS_PATH) -> dict:
     if data.get("prefs_version") != PREFS_VERSION:          # guardadas por una versión anterior
         prefs["model"] = DEFAULT_MODEL
     prefs["prefs_version"] = PREFS_VERSION
+    return prefs
+
+
+def update_prefs(changes: dict, path: Path = PREFS_PATH) -> dict:
+    """Cambia solo `changes` sobre lo que haya en disco. Cada página (chat, documentos, estudiar) guarda lo suyo sin pisar
+    lo de las demás, que es lo que ocurriría si cada una escribiera su copia completa."""
+    prefs = load_prefs(path)
+    prefs.update({k: v for k, v in changes.items() if k in DEFAULT_PREFS})
+    save_prefs(prefs, path)
     return prefs
 
 

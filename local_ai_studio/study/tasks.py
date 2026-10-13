@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import html
 import io
 import json
 import re
@@ -54,13 +55,26 @@ def cards_markdown(cards: list[dict]) -> str:
     return "\n\n".join(f"**{i}. {c['q']}**\n\n> {c['a']}" for i, c in enumerate(cards, 1))
 
 
-def cards_csv(cards: list[dict]) -> str:
-    """CSV de dos columnas (pregunta, respuesta), listo para importar en Anki. Neutraliza fórmulas de hoja de cálculo."""
+def cards_csv(cards: list[dict], header: bool = False) -> str:
+    """CSV de dos columnas (pregunta, respuesta). Neutraliza fórmulas de hoja de cálculo. Con `header=True` lleva la fila
+    «Pregunta,Respuesta» (así Notion lo importa como una base de datos con esas dos columnas)."""
     buf = io.StringIO()
     w = csv.writer(buf)
+    if header:
+        w.writerow(["Pregunta", "Respuesta"])
     for c in cards:
         w.writerow([_safe_cell(c["q"]), _safe_cell(c["a"])])
     return buf.getvalue()
+
+
+def cards_anki(cards: list[dict]) -> str:
+    """Archivo de texto que Anki importa DIRECTAMENTE (Archivo → Importar): las dos primeras líneas son directivas de Anki
+    (separador de tabulador y HTML activado). El texto se escapa como HTML y los saltos de línea pasan a <br>."""
+    def cell(s: str) -> str:
+        return html.escape(s, quote=False).replace("\t", " ").replace("\r", "").replace("\n", "<br>")
+    lines = ["#separator:tab", "#html:true"]
+    lines += [f"{cell(c['q'])}\t{cell(c['a'])}" for c in cards]
+    return "\n".join(lines) + "\n"
 
 
 def _safe_cell(s: str) -> str:

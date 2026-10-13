@@ -131,6 +131,19 @@ class TestModelos(unittest.TestCase):
             self.assertEqual(load_prefs(p)["model"], "qwen2.5:7b")                               # y se conserva
             self.assertEqual(load_prefs(p)["prefs_version"], PREFS_VERSION)
 
+    def test_cada_pagina_recuerda_su_modelo_sin_pisar_el_de_las_demas(self):
+        from local_ai_studio.chat.store import update_prefs
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "prefs.json"
+            update_prefs({"model": "mistral:7b"}, p)                  # el chat elige Mistral
+            update_prefs({"docs_model": "qwen2.5:7b"}, p)             # Documentos elige Qwen
+            update_prefs({"study_model": "gemma2:9b", "no_existe": 1}, p)
+            got = load_prefs(p)
+            self.assertEqual((got["model"], got["docs_model"], got["study_model"]), ("mistral:7b", "qwen2.5:7b", "gemma2:9b"))
+            self.assertNotIn("no_existe", got)                         # claves desconocidas se ignoran
+            update_prefs({"temperature": 0.2}, p)                      # y un cambio posterior tampoco las pierde
+            self.assertEqual(load_prefs(p)["docs_model"], "qwen2.5:7b")
+
     def test_la_lista_de_modelos_instalados_se_recuerda_unos_segundos(self):
         client = mock.Mock()
         client.list.return_value = mock.Mock(models=[mock.Mock(model="llama3.1:8b")])

@@ -20,7 +20,7 @@ from ..chat import render, roles
 from ..agent.loop import Agent
 from ..agent.policy import WORKSPACE, Policy, ToolDenied, validate_new_root
 from ..chat.engine import CHAT_MODELS, DEFAULT_MODEL, TOOL_MODELS, ChatEngine, Params, Reply, build_messages, est_tokens, is_vision
-from ..chat.store import ChatStore, load_prefs, save_prefs, title_from
+from ..chat.store import ChatStore, load_prefs, title_from, update_prefs
 from ..core.errors import Cancelled
 from ..core.textutil import safe_name
 from . import confirm_dialog
@@ -322,9 +322,9 @@ class ChatPage(ctk.CTkFrame):
         return Params(round(self.temp_var.get(), 2), round(self.topp_var.get(), 2), mt, cx)
 
     def _save_prefs(self, p: Params):
-        self.prefs.update(model=self.model_var.get(), temperature=p.temperature, top_p=p.top_p, max_tokens=p.max_tokens,
-                          num_ctx=p.num_ctx, system_prompt=self.system_box.get("1.0", "end").strip())
-        save_prefs(self.prefs)
+        self.prefs = update_prefs({"model": self.model_var.get(), "temperature": p.temperature, "top_p": p.top_p,
+                                   "max_tokens": p.max_tokens, "num_ctx": p.num_ctx,
+                                   "system_prompt": self.system_box.get("1.0", "end").strip()})
 
     # -------------------------------------------------------------- modelo
     def _on_model(self, model: str):
@@ -597,8 +597,7 @@ class ChatPage(ctk.CTkFrame):
             return
         if root not in self.policy.read_roots:
             self.policy.read_roots.append(root)
-            self.prefs["read_roots"] = [str(r) for r in self.policy.read_roots[1:]]
-            save_prefs(self.prefs)
+            self.prefs = update_prefs({"read_roots": [str(r) for r in self.policy.read_roots[1:]]})
         self._refresh_tools_label()
 
     def _start_stream_ui(self, text: str):

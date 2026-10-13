@@ -51,6 +51,32 @@ _FIGURE_RE = re.compile(
     r"representaci[óo]n\s+3D|3D\s+(?:plot|representation)|superficie|surface)\b", re.I)
 
 
+_STAMP = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}")        # la fecha de generación cambia siempre; las cifras del contenido NO se ignoran
+KEEP_VERSIONS = 10
+
+
+def archive_previous(out: Path, new_md: str) -> Path | None:
+    """Antes de sobrescribir un resumen, guarda el anterior en resumenes/historial/ (con la fecha en el nombre) si su contenido
+    cambió de verdad: así volver a resumir un PDF nunca destruye la versión previa. Conserva las últimas `KEEP_VERSIONS`."""
+    if not out.is_file():
+        return None
+    old = out.read_text(encoding="utf-8")
+    if _STAMP.sub("", old) == _STAMP.sub("", new_md):
+        return None
+    folder = out.parent / "historial"
+    folder.mkdir(exist_ok=True)
+    stamp = datetime.fromtimestamp(out.stat().st_mtime).strftime("%Y%m%d-%H%M%S")
+    dest = folder / f"{out.stem}_{stamp}.md"
+    n = 1
+    while dest.exists():
+        dest = folder / f"{out.stem}_{stamp}_{n}.md"
+        n += 1
+    dest.write_text(old, encoding="utf-8")
+    for extra in sorted(folder.glob(f"{out.stem}_*.md"))[:-KEEP_VERSIONS]:
+        extra.unlink(missing_ok=True)
+    return dest
+
+
 class UI:
     """Interfaz de callbacks; la GUI la sustituye por una versión que usa colas."""
     def progress(self, frac: float, msg: str): ...
@@ -152,6 +178,7 @@ class Summarizer:
         """Guarda el resultado en la caché y el Markdown en resumenes/; avisa a la interfaz de que terminó."""
         cache.save(pdf_hash, "final", phash, result)
         out = SUMMARIES_DIR / f"{safe_name(Path(name).stem)}_resumen.md"
+        archive_previous(out, md)
         out.write_text(md, encoding="utf-8")
         result["saved_md"] = str(out)
         self._log(f"✔ Guardado en {out}  (total {fmt_time(result['elapsed'])})")

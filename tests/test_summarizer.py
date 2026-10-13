@@ -239,5 +239,39 @@ class TestUtilidades(Base):
             self.assertNotEqual(a, summarizer.extraction_key(CFG, True, True))
 
 
+class TestHistorialDeVersiones(Base):
+    def test_no_se_archiva_si_solo_cambia_la_fecha(self):
+        out = self.out_dir / "x_resumen.md"
+        out.write_text("# T\n\n> Generado: 2026-10-12 20:42\n\nLa cantidad es 1080.\n", encoding="utf-8")
+        self.assertIsNone(summarizer.archive_previous(out, "# T\n\n> Generado: 2026-10-13 09:00\n\nLa cantidad es 1080.\n"))
+        self.assertFalse((self.out_dir / "historial").exists())
+
+    def test_un_cambio_de_cifras_SI_se_archiva_y_la_version_vieja_se_conserva(self):
+        out = self.out_dir / "x_resumen.md"
+        out.write_text("La cantidad es 1080.\n", encoding="utf-8")
+        dest = summarizer.archive_previous(out, "La cantidad es 1090.\n")
+        self.assertIsNotNone(dest)
+        self.assertEqual(dest.parent.name, "historial")
+        self.assertEqual(dest.read_text(encoding="utf-8"), "La cantidad es 1080.\n")
+
+    def test_volver_a_resumir_un_pdf_cambiado_no_destruye_el_resumen_anterior(self):
+        res1, _ = self.run_summary()
+        self.pdf = make_pdf(self.tmp, [PAGES[0].replace("1080", "2222"), PAGES[1]])        # el PDF cambió (otro hash)
+        res2, _ = self.run_summary()
+        versions = list((self.out_dir / "historial").glob("informe_resumen_*.md"))
+        self.assertEqual(len(versions), 1)
+        self.assertIn("1080", versions[0].read_text(encoding="utf-8"))
+        self.assertIn("2222", Path(res2["saved_md"]).read_text(encoding="utf-8"))
+        self.assertNotIn("1080", Path(res2["saved_md"]).read_text(encoding="utf-8"))
+        self.assertIn("1080", res1["markdown"])
+
+    def test_solo_se_conservan_las_ultimas_versiones(self):
+        out = self.out_dir / "x_resumen.md"
+        for n in range(summarizer.KEEP_VERSIONS + 4):
+            out.write_text(f"versión {n}\n", encoding="utf-8")
+            summarizer.archive_previous(out, f"versión {n + 1}\n")
+        self.assertEqual(len(list((self.out_dir / "historial").glob("x_resumen_*.md"))), summarizer.KEEP_VERSIONS)
+
+
 if __name__ == "__main__":
     unittest.main()

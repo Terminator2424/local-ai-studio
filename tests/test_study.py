@@ -77,6 +77,21 @@ class TestTarjetas(unittest.TestCase):
         self.assertTrue(rows[0][1].startswith("'+"))
         self.assertEqual(rows[1], ["normal, con coma", '"comillas"'])
 
+    def test_csv_con_encabezado_para_notion(self):
+        rows = list(csv.reader(io.StringIO(tasks.cards_csv([{"q": "P", "a": "R"}], header=True))))
+        self.assertEqual(rows, [["Pregunta", "Respuesta"], ["P", "R"]])
+        self.assertEqual(list(csv.reader(io.StringIO(tasks.cards_csv([{"q": "P", "a": "R"}])))), [["P", "R"]])   # sin encabezado por defecto
+
+    def test_anki_directo_con_directivas_y_html_escapado(self):
+        text = tasks.cards_anki([{"q": "¿Qué es <b>x</b> & y?", "a": "Línea 1\nLínea 2\tcon tab"}, {"q": "Otra", "a": "Sí"}])
+        lines = text.splitlines()
+        self.assertEqual(lines[:2], ["#separator:tab", "#html:true"])
+        self.assertEqual(len(lines), 4)                                     # una línea por tarjeta: los saltos pasan a <br>
+        q, a = lines[2].split("\t")                                          # y solo hay UN tabulador separador por tarjeta
+        self.assertEqual(q, "¿Qué es &lt;b&gt;x&lt;/b&gt; &amp; y?")
+        self.assertEqual(a, "Línea 1<br>Línea 2 con tab")
+        self.assertTrue(text.endswith("\n"))
+
     def test_markdown(self):
         self.assertEqual(tasks.cards_markdown([{"q": "P", "a": "R"}]), "**1. P**\n\n> R")
 

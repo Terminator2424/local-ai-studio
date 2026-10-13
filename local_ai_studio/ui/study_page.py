@@ -6,12 +6,14 @@ import contextlib
 import logging
 import queue
 import threading
+from pathlib import Path
 from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
 from ..agent.sandbox import run_python
-from ..chat.engine import CHAT_MODELS, DEFAULT_MODEL, ChatEngine, Params
+from ..chat.engine import CHAT_MODELS, ChatEngine, Params
+from ..chat.store import load_prefs, update_prefs
 from ..core.errors import Cancelled
 from ..rag.index import DocIndex
 from ..study import check, tasks
@@ -89,7 +91,8 @@ class StudyPage(ctk.CTkFrame):
         self.exercise = ctk.CTkTextbox(left, height=96, wrap="word", fg_color=SURFACE, text_color=TEXT, border_width=1,
                                        border_color=BORDER, font=font(12))
         label(left, "Modelo", 12, muted=True).pack(anchor="w", padx=6, pady=(14, 2))
-        self.picker = ModelPicker(left, [m for m in CHAT_MODELS if "vl" not in m], DEFAULT_MODEL, width=372, wrap=372)
+        self.picker = ModelPicker(left, [m for m in CHAT_MODELS if "vl" not in m], load_prefs()["study_model"],
+                                  lambda m: update_prefs({"study_model": m}), width=372, wrap=372)
         self.picker.pack(fill="x", padx=6)
         self.model_var = self.picker.var
         self.go_btn = primary_button(left, "Generar", self._go, height=42)
@@ -97,7 +100,7 @@ class StudyPage(ctk.CTkFrame):
         self.prog = ctk.CTkProgressBar(left, height=5, progress_color=ACCENT, fg_color=BORDER, mode="indeterminate")
         self.status = label(left, "", 12, muted=True, wraplength=290, justify="left")
         self.status.pack(anchor="w", padx=8, pady=(6, 0))
-        self.csv_btn = ghost_button(left, "Exportar tarjetas (CSV para Anki)", self._export_csv, height=30)
+        self.csv_btn = ghost_button(left, "Exportar tarjetas (Anki, Notion…)", self._export_csv, height=30)
         self._on_task(self.task_menu.get())
 
     def _build_main(self):
@@ -275,9 +278,13 @@ class StudyPage(ctk.CTkFrame):
     def _export_csv(self):
         if not self.cards:
             return
-        path = filedialog.asksaveasfilename(title="Exportar tarjetas", defaultextension=".csv", initialfile="tarjetas.csv",
-                                            filetypes=[("CSV", "*.csv")])
+        path = filedialog.asksaveasfilename(
+            title="Exportar tarjetas", defaultextension=".txt", initialfile="tarjetas.txt",
+            filetypes=[("Anki (importar directo)", "*.txt"), ("Notion / hoja de cálculo (CSV)", "*.csv"), ("Markdown", "*.md")])
         if path:
+            ext = Path(path).suffix.lower()
+            text = (tasks.cards_csv(self.cards, header=True) if ext == ".csv"
+                    else tasks.cards_markdown(self.cards) + "\n" if ext == ".md" else tasks.cards_anki(self.cards))
             with open(path, "w", encoding="utf-8", newline="") as fh:
-                fh.write(tasks.cards_csv(self.cards))
+                fh.write(text)
             self.status.configure(text=f"Guardado en {path}")
