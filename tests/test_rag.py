@@ -8,11 +8,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import pymupdf  # noqa: E402
+import pymupdf
 
-from src.core.utils import Cancelled  # noqa: E402
-from src.rag import ask  # noqa: E402
-from src.rag.index import DocIndex, Hit, fts_query  # noqa: E402
+from local_ai_studio.core.errors import Cancelled
+from local_ai_studio.rag import ask
+from local_ai_studio.rag.index import DocIndex, Hit, fts_query
 
 PAGES = [
     "Introducción al método de Simpson. La regla de Simpson 1/3 aproxima integrales usando parábolas.",

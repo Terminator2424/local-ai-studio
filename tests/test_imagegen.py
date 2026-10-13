@@ -3,7 +3,6 @@
 La prueba con GPU real solo corre si PyTorch ve CUDA y SD 1.5 está descargado; si no, se salta.
 """
 import hashlib
-import re
 import sys
 import tempfile
 import unittest
@@ -12,10 +11,10 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from src.images import generate as gen  # noqa: E402
-from src.images import models as mdl  # noqa: E402
+from local_ai_studio.images import generate as gen
+from local_ai_studio.images import models as mdl
 
 SD15 = mdl.CATALOG["sd15"]
 
@@ -169,7 +168,7 @@ class TestGpuReal(unittest.TestCase):
             self.skipTest("PyTorch no está instalado")
         if not torch.cuda.is_available():
             self.skipTest("PyTorch no ve CUDA")
-        from src.core.model_manager import ModelManager
+        from local_ai_studio.core.model_manager import ModelManager
         cfg = {"ollama": {"host": "http://localhost:11434"}}
         g = gen.ImageGenerator(ModelManager(cfg))
         try:

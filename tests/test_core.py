@@ -9,14 +9,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import pymupdf  # noqa: E402
+import pymupdf
 
-from src.pdf.cleaner import clean_text  # noqa: E402
-from src.core.hardware_detector import HardwareInfo, decide  # noqa: E402
-from src.pdf.layout import layout_text  # noqa: E402
-from src.pdf.scrub import fix_plain_tables, scrub_lines  # noqa: E402
-from src.core.utils import enforce_local_host  # noqa: E402
-from src.pdf.verify import check_code_block, compare_readings, mark_numeric_errors, numeric_chain_error  # noqa: E402
+from local_ai_studio.pdf.cleaner import clean_text
+from local_ai_studio.core.hardware_detector import HardwareInfo, decide
+from local_ai_studio.pdf.layout import layout_text
+from local_ai_studio.pdf.scrub import fix_plain_tables, scrub_lines
+from local_ai_studio.core.ollama_client import enforce_local_host
+from local_ai_studio.pdf.verify import check_code_block, compare_readings, mark_numeric_errors, numeric_chain_error
 
 CODE = ["function validar(clave) {",
         "  if (clave.length < 8) return false;",
@@ -129,7 +129,7 @@ class TestRegresiones(unittest.TestCase):
         self.assertEqual(check_code_block(code, "javascript", code), [])
 
     def test_lineas_numericas_sueltas_no_se_borran(self):
-        from src.pdf.extractor import _strip_headers_footers
+        from local_ai_studio.pdf.extractor import _strip_headers_footers
         pages = ["F(1) = [27 + 110]\n\n513\n\n3\n\ntexto final de la pagina uno\n\n1", "otra pagina\n\n2"]
         out = _strip_headers_footers(pages)
         self.assertIn("513", out[0])           # numerador de una fracción: contenido, no número de página
@@ -138,7 +138,7 @@ class TestRegresiones(unittest.TestCase):
 
 class TestMathOCR(unittest.TestCase):
     def test_simbolos_ignoran_la_estructura(self):
-        from src.pdf.mathocr import symbol_tokens
+        from local_ai_studio.pdf.mathocr import symbol_tokens
         a = symbol_tokens(r"F(y) \approx \frac{h_x}{3} [ T_0 + 4T_1 ]")
         b = symbol_tokens(r"F(y)\approx\underbrace{h_{x}}_{3}\left[T_{0}+4T_{1}\right]")
         self.assertEqual(a, b)                      # fracción vs underbrace: mismos símbolos

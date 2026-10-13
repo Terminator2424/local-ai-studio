@@ -1,0 +1,13 @@
+# Finales de línea coherentes en cualquier sistema.
+* text=auto
+
+# Los scripts de Windows necesitan CRLF para ejecutarse bien.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binarios: nunca se tocan.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.safetensors binary
+*.ico binary

@@ -1,4 +1,4 @@
-"""Pruebas del troceo de fragmentos (src/chunking.py), sin dependencias externas."""
+"""Pruebas del troceo de fragmentos (local_ai_studio/chunking.py), sin dependencias externas."""
 import sys
 import unittest
 from pathlib import Path
@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from types import SimpleNamespace
 
-from src.pdf.chunking import RecursiveSplitter, build_chunks  # noqa: E402
+from local_ai_studio.pdf.chunking import RecursiveSplitter, build_chunks
 
 SEPS = ["\n\n\n", "\n\n", "\n", ". ", "; ", ", ", " ", ""]
 

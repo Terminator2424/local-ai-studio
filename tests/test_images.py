@@ -6,10 +6,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from src.images import edit  # noqa: E402
-from src.images.edit import EditParams  # noqa: E402
+from local_ai_studio.images import edit
+from local_ai_studio.images.edit import EditParams
 
 
 def sample(w=40, h=20):

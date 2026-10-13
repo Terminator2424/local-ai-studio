@@ -1,4 +1,4 @@
-"""Pruebas de la reconstrucción de fórmulas desde la geometría del PDF (src/mathgeom.py) y de su colocación en el texto.
+"""Pruebas de la reconstrucción de fórmulas desde la geometría del PDF (local_ai_studio/mathgeom.py) y de su colocación en el texto.
 
 No necesitan Ollama. Los glifos se construyen con las coordenadas reales de un PDF generado con LaTeX (fuentes
 CMMI10, CMR10, CMR7, CMEX10…): las fuentes TeX no se pueden inventar con PyMuPDF, así que la geometría se fija a mano.
@@ -11,10 +11,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import pymupdf  # noqa: E402
+import pymupdf
 
-from src.pdf import mathgeom as mg  # noqa: E402
-from src.pdf.cleaner import _is_fragment, page_text_for_clean  # noqa: E402
+from local_ai_studio.pdf import mathgeom as mg
+from local_ai_studio.pdf.cleaner import _is_fragment, page_text_for_clean
 
 
 def gl(c, x0, x1, base, size=9.96, font="CMMI10"):

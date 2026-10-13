@@ -1,0 +1,57 @@
+[project]
+name = "local-ai-studio"
+dynamic = ["version"]
+description = "Asistente de IA 100 % local para Windows: resumir PDFs, preguntar a tus documentos con citas, chat, modo estudio y generación/edición de imágenes. Sin nube, sin cuentas."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+keywords = ["ollama", "local-ai", "rag", "pdf", "stable-diffusion", "privacy", "customtkinter"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Natural Language :: Spanish",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "local_ai_studio.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["local_ai_studio*"]
+
+# ----------------------------------------------------------------------------------------------------------
+# Calidad de código: `ruff check .` y `mypy` deben terminar sin errores (los exige la integración continua).
+# ----------------------------------------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py311"
+line-length = 140
+extend-exclude = ["venv", "build", "dist", "models", "outputs", "resumenes", "imagenes", "conversations", "workspace"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "B", "BLE", "UP", "SIM", "RET", "C4", "PIE", "S", "RUF", "PL", "A", "T20"]
+ignore = [
+    "PLR0913", "PLR0917",         # muchos parámetros: normal en funciones de interfaz y de configuración
+    "PLR0911", "PLR0912", "PLR0915", "PLR2004",   # el tamaño y las constantes mágicas los vigila la revisión, no un contador
+    "PLC0415",                    # importar dentro de funciones es deliberado: torch/diffusers/sympy cargan solo al usarse
+    "PLW0603",                    # estado global de módulo (caché de hardware, gestor de VRAM): es el diseño elegido
+    "RUF001", "RUF002", "RUF003", # el texto está en español: «×», «−», «·» son intencionados
+    "S101",                       # assert en pruebas
+    "S603", "S607",               # subprocess con lista de argumentos fija, sin shell (revisado una a una)
+    "S311",                       # random para semillas de imagen: no es criptografía
+    "C408",                       # dict(a=1) con nombres de argumento: más legible que un literal en plantillas largas
+    "PLW2901",                    # reasignar la variable del bucle al normalizar texto línea a línea es un idioma claro
+    "SIM117",                     # with anidados: más legibles en pruebas con varios mock.patch
+
+    "T201",                       # print(): solo lo usan la CLI (--doctor) y los scripts de diagnóstico
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "PLR", "B", "BLE", "RUF", "E501", "E741", "PLW", "PLC2401", "SIM", "ARG"]    # pruebas: nombres en español y mocks
+"local_ai_studio/pdf/mathgeom.py" = ["E741"]      # «l» es la longitud de un trazo en geometría; renombrarla empeora la lectura
+"local_ai_studio/agent/sandbox.py" = ["S"]        # ejecuta código a propósito, dentro del sandbox (ver SECURITY.md)
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+exclude = ["venv", "build", "dist", "tests"]

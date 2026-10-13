@@ -1,5 +1,5 @@
 # ============================================================
-#  Configuración de Resumidor PDF Local
+#  Configuración de Local AI Studio
 #  Prioridad: DETALLE y FIDELIDAD sobre velocidad (100 % local con Ollama)
 # ============================================================
 
@@ -19,7 +19,7 @@ ollama:
     temperature: 0.05
     num_predict: 1800
 
-hardware:                         # ajuste automático según tu GPU/RAM (ver src/hardware_detector.py)
+hardware:                         # ajuste automático según tu GPU/RAM (ver local_ai_studio/hardware_detector.py)
   auto: true                      # false = usar tal cual los valores de este archivo
   large_model: "qwen2.5:14b"      # se usa si hay >= large_model_min_vram_gb de VRAM y está instalado
   large_model_min_vram_gb: 12

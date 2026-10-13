@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.study import check, tasks  # noqa: E402
+from local_ai_studio.study import check, tasks
 
 
 class TestAnotacion(unittest.TestCase):

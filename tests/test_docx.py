@@ -6,9 +6,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from docx import Document  # noqa: E402
+from docx import Document
 
-from src.core.docx_export import md_to_docx  # noqa: E402
+from local_ai_studio.core.docx_export import md_to_docx
 
 MD = r"""# Título del documento
 

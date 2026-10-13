@@ -11,9 +11,9 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.chat import engine as eng  # noqa: E402
-from src.core import netguard  # noqa: E402
-from src.core.mdview import md_to_html  # noqa: E402
+from local_ai_studio.chat import engine as eng  # noqa: E402
+from local_ai_studio.core import netguard  # noqa: E402
+from local_ai_studio.core.mdview import md_to_html  # noqa: E402
 
 PY = sys.executable
 
@@ -67,7 +67,7 @@ class TestBarreraDeRed(unittest.TestCase):
         code = textwrap.dedent(f"""
             import sys, socket, threading, urllib.request, urllib.error
             sys.path.insert(0, {str(ROOT)!r})
-            from src.core import netguard
+            from local_ai_studio.core import netguard
             netguard.install()
             out = {{}}
             try:
@@ -98,7 +98,7 @@ class TestBarreraDeRed(unittest.TestCase):
         """)
         r = subprocess.run([PY, "-I", "-c", code], capture_output=True, text=True, timeout=60)
         self.assertEqual(r.returncode, 0, r.stderr)
-        out = eval(r.stdout.strip().splitlines()[-1])        # noqa: S307 (salida propia del subproceso de la prueba)
+        out = eval(r.stdout.strip().splitlines()[-1])
         self.assertEqual(out["salida_directa"], "bloqueada")
         self.assertEqual(out["urllib"], "bloqueada")
         self.assertEqual(out["dns"], "bloqueada")
@@ -118,11 +118,11 @@ class TestVisorSeguroDePdf(unittest.TestCase):
         for md in self.ATAQUES:
             html = md_to_html("texto " + md, "light", "Segoe UI", formulas=False, safe=True)[0]
             self.assertNotRegex(html, r"(?i)<(script|iframe|link|style|a)\b", md)
-            self.assertNotRegex(html, r"(?i)<[^>]*(src|href)\s*=\s*[\"']?(https?:)?//", md)      # etiquetas reales, no texto escapado
+            self.assertNotRegex(html, r"(?i)<[^>]*\b(src|href)\s*=\s*[\"']?(https?:)?//", md)      # etiquetas reales, no texto escapado
             self.assertNotRegex(html, r"(?i)<img(?![^>]*src=[\"']data:)", md)
 
     def test_todas_las_llamadas_de_la_interfaz_usan_modo_seguro(self):
-        for f in list((ROOT / "src" / "ui").glob("*.py")) + [ROOT / "src" / "core" / "utils.py", ROOT / "src" / "chat" / "render.py"]:
+        for f in list((ROOT / "local_ai_studio" / "ui").glob("*.py")) + [ROOT / "local_ai_studio" / "core" / "pdf_export.py", ROOT / "local_ai_studio" / "chat" / "render.py"]:
             for m in re.finditer(r"md_to_html\(([^()]|\([^()]*\))*\)", f.read_text(encoding="utf-8")):
                 self.assertIn("safe=True", m.group(0), f"{f.name}: {m.group(0)[:80]}")
 
@@ -143,17 +143,16 @@ class TestListasCerradas(unittest.TestCase):
         self.assertTrue(set(eng.CHAT_MODELS) <= eng.ALLOWED_PULLS)
 
     def test_modelos_de_imagen_con_revision_hash_y_solo_safetensors(self):
-        from src.images import models
+        from local_ai_studio.images import models
         for m in models.CATALOG.values():
             self.assertRegex(m.revision, r"^[0-9a-f]{40}$")
             self.assertTrue(all(re.search(r"\.(json|txt|safetensors)$", f) for f in m.files))
-        src = (ROOT / "src" / "images" / "generate.py").read_text(encoding="utf-8")
+        src = (ROOT / "local_ai_studio" / "images" / "generate.py").read_text(encoding="utf-8")
         self.assertIn("use_safetensors=True", src)
         self.assertIn("local_files_only=True", src)       # el pipeline nunca se descarga solo
 
     def test_descarga_de_imagenes_solo_con_la_red_permitida(self):
-        from src.images import models
-        src = (ROOT / "src" / "images" / "models.py").read_text(encoding="utf-8")
+        src = (ROOT / "local_ai_studio" / "images" / "models.py").read_text(encoding="utf-8")
         self.assertIn("allow_network(", src)
 
 
@@ -166,7 +165,7 @@ class TestPatronesPeligrososEnElCodigo(unittest.TestCase):
                  (r"\bmarshal\b", "marshal")]
 
     def test_no_hay_patrones_peligrosos(self):
-        for f in (ROOT / "src").rglob("*.py"):
+        for f in (ROOT / "local_ai_studio").rglob("*.py"):
             text = f.read_text(encoding="utf-8")
             for rx, why in self.PROHIBIDO:
                 for m in re.finditer(rx, text):
@@ -186,7 +185,7 @@ class TestPatronesPeligrososEnElCodigo(unittest.TestCase):
 class TestEntradasHostiles(unittest.TestCase):
     def test_imagen_enorme_se_rechaza(self):
         from PIL import Image
-        from src.images import edit
+        from local_ai_studio.images import edit
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "bomba.png"
             Image.new("1", (20000, 20000)).save(p)          # 400 megapíxeles que comprimen a casi nada
@@ -194,14 +193,14 @@ class TestEntradasHostiles(unittest.TestCase):
                 edit.load(p)
 
     def test_nombres_de_archivo_no_escapan_de_la_carpeta(self):
-        from src.core.utils import safe_name
+        from local_ai_studio.core.textutil import safe_name
         for evil in ("../../Windows/system32/x", "..\\..\\x", "C:\\x\\y", "con:aux", "a/b\\c", "\x00x", ""):
             n = safe_name(evil)
             self.assertNotRegex(n, r"[\\/:]")
             self.assertTrue(n)
 
     def test_host_de_ollama_no_local_se_rechaza(self):
-        from src.core.utils import enforce_local_host
+        from local_ai_studio.core.ollama_client import enforce_local_host
         for host in ("http://0.0.0.0:11434", "http://192.168.1.5:11434", "http://evil.example", "https://ollama.com"):
             with self.assertRaises(RuntimeError, msg=host):
                 enforce_local_host(host)

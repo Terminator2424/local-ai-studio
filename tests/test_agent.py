@@ -10,10 +10,10 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.agent import loop  # noqa: E402
-from src.agent.policy import Policy, ToolDenied  # noqa: E402
-from src.agent.sandbox import run_python  # noqa: E402
-from src.agent.tools import TOOLS  # noqa: E402
+from local_ai_studio.agent import loop
+from local_ai_studio.agent.policy import Policy, ToolDenied
+from local_ai_studio.agent.sandbox import run_python
+from local_ai_studio.agent.tools import TOOLS
 
 
 def make_policy(tmp: Path) -> Policy:
@@ -371,7 +371,7 @@ class TestLoQueSeApruebaEsLoQueSeEjecuta(unittest.TestCase):
         self.assertIn("sobrescribir: False", s)
 
     def test_lo_demasiado_largo_para_revisar_se_rechaza(self):
-        from src.agent.tools import MAX_REVIEW
+        from local_ai_studio.agent.tools import MAX_REVIEW
         TOOLS["ejecutar_python"].check_args({"codigo": "x" * MAX_REVIEW})
         with self.assertRaises(ToolDenied):
             TOOLS["ejecutar_python"].check_args({"codigo": "x" * (MAX_REVIEW + 1)})

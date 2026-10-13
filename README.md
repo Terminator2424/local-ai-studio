@@ -40,7 +40,7 @@ Pensado para una RTX 4060 de 8 GB (se adapta a tu hardware). Interfaz simple: fo
    Opcionales: `llama3.1:8b`, `gemma2:9b`, `mistral:7b`, `qwen2.5-coder:7b`. Los modelos de imagen se descargan desde **Generar imagen**.
 
 ## La VRAM: un modelo a la vez
-Con 8 GB no caben a la vez un modelo de chat y uno de imágenes. `src/core/model_manager.py` decide qué está cargado: antes de generar
+Con 8 GB no caben a la vez un modelo de chat y uno de imágenes. `local_ai_studio/core/model_manager.py` decide qué está cargado: antes de generar
 imágenes descarga los modelos de Ollama, y antes de chatear libera el pipeline de imágenes. La barra inferior muestra qué hay en memoria y
 la VRAM libre; al cambiar de función hay una espera de unos segundos mientras se carga el otro modelo.
 
@@ -64,7 +64,7 @@ en la ventana de permiso. Todo queda en `conversations/actions.log`.
 ## Resumir PDF: cómo se garantiza la fidelidad
 Un modelo de 7B alucina si reescribe mucho texto técnico. Por eso en el nivel por defecto, **Texto limpio**, el contenido **no lo reescribe
 ningún modelo**: se extrae y se comprueba.
-- **Fórmulas reconstruidas desde el propio PDF** (`src/pdf/mathgeom.py`): un PDF de LaTeX guarda cada símbolo con su fuente, tamaño y línea
+- **Fórmulas reconstruidas desde el propio PDF** (`local_ai_studio/pdf/mathgeom.py`): un PDF de LaTeX guarda cada símbolo con su fuente, tamaño y línea
   base, y las fracciones son reglas. Con eso se reconstruye el LaTeX sin modelo (fracciones, subíndices, integrales y sumatorios con límites).
   Si algo no se puede explicar, el bloque se deja a la lectura de la visión. Cuando ambas lecturas discrepan, la fórmula sale con ⚠ y dice
   **qué símbolo** difiere («PDF «3» · visión «2»»).
@@ -73,7 +73,7 @@ ningún modelo**: se extrae y se comprueba.
 - **Código**: cada línea debe existir en el PDF, los delimitadores deben cuadrar y, en Python, compilar.
 - **Informe de fidelidad** al final: «fórmulas verificadas 96/101 · ⚠ 2 a revisar (págs. 3, 9)».
 
-Los niveles con IA (Compacto IA, Normal, Detallado) reescriben y por eso se sanean con `src/pdf/scrub.py`; úsalos solo como secundarios.
+Los niveles con IA (Compacto IA, Normal, Detallado) reescriben y por eso se sanean con `local_ai_studio/pdf/scrub.py`; úsalos solo como secundarios.
 Detalle de cada nivel y del ahorro de tokens: **Texto limpio** ≈ 90 % menos tokens que enviar el PDF; un resumen con IA solo compensa en
 documentos largos de mucha prosa.
 
@@ -92,10 +92,10 @@ chat y almacén, gestor de VRAM, imágenes, RAG, modo estudiar, exportación a W
 con un proceso real, ataques al visor, políticas de rutas, listas cerradas de descargas y patrones peligrosos en el código).
 La prueba de GPU real y las que usan el PDF de Simpson solo corren si el modelo o el archivo están en tu equipo.
 
-Auditoría de seguridad (opcional): `pip install bandit pip-audit` y luego `bandit -r src app.py -ll` y `pip-audit`.
+Auditoría de seguridad (opcional): `pip install bandit pip-audit` y luego `bandit -r local_ai_studio app.py -ll` y `pip-audit`.
 
 ## Hardware: ajuste automático
-`src/core/hardware_detector.py` detecta GPU/VRAM (NVML o `nvidia-smi`), RAM y GPU integrada y ajusta, sin tocar tu `config.yaml`:
+`local_ai_studio/core/hardware_detector.py` detecta GPU/VRAM (NVML o `nvidia-smi`), RAM y GPU integrada y ajusta, sin tocar tu `config.yaml`:
 
 | VRAM libre | Modelo | `num_ctx` |
 |---|---|---|
@@ -106,21 +106,21 @@ Auditoría de seguridad (opcional): `pip install bandit pip-audit` y luego `band
 | < 4 GB / sin GPU NVIDIA | `qwen2.5:7b` (o `3b`) en CPU | 2048–4096 |
 
 Nota: la VRAM libre real es menor que la total porque Windows usa parte para el escritorio (en una RTX 4060 de 8 GB suelen quedar ~6–7 GB).
-`python -m src.core.hardware_detector` imprime el diagnóstico.
+`python -m local_ai_studio.core.hardware_detector` imprime el diagnóstico.
 
 ## Estructura
 ```
 app.py                       punto de entrada (ventana unificada)
 run.bat                      lanzador con doble clic
 config.example.yaml          plantilla de configuración y prompts (config.yaml es local)
-src/core/                    utils, hardware, caché, gestor de VRAM, barrera de red, visor Markdown, exportación a Word
-src/pdf/                     extracción, mathgeom (fórmulas desde glifos), symcheck (sympy), verificación, resumidor
-src/chat/                    historial SQLite, motor de Ollama, renderizado seguro
-src/agent/                   política de rutas, herramientas, bucle con permisos, sandbox
-src/rag/                     índice híbrido de documentos y comprobación de respuestas
-src/study/                   tarjetas y verificación de pasos
-src/images/                  catálogo y descarga verificada, generación (diffusers), edición (Pillow), portapapeles
-src/ui/                      ventana principal y páginas
+local_ai_studio/core/                    utils, hardware, caché, gestor de VRAM, barrera de red, visor Markdown, exportación a Word
+local_ai_studio/pdf/                     extracción, mathgeom (fórmulas desde glifos), symcheck (sympy), verificación, resumidor
+local_ai_studio/chat/                    historial SQLite, motor de Ollama, renderizado seguro
+local_ai_studio/agent/                   política de rutas, herramientas, bucle con permisos, sandbox
+local_ai_studio/rag/                     índice híbrido de documentos y comprobación de respuestas
+local_ai_studio/study/                   tarjetas y verificación de pasos
+local_ai_studio/images/                  catálogo y descarga verificada, generación (diffusers), edición (Pillow), portapapeles
+local_ai_studio/ui/                      ventana principal y páginas
 tests/                       pruebas
 ```
 Datos de usuario (fuera de git): `resumenes/`, `imagenes/`, `conversations/` (chats, índice, registro de acciones), `outputs/`, `models/`, `workspace/`.
@@ -138,5 +138,5 @@ la app comprueba con código lo que se puede comprobar. No hace falta entrenar n
 ## Contribuir
 1. Haz un fork y una rama (`git checkout -b mejora/lo-que-sea`).
 2. Instala los hooks: `pip install pre-commit detect-secrets && pre-commit install`.
-3. Cambios pequeños y comentados. Si cambias la extracción o los prompts del resumidor, sube `EXTRACT_VERSION` / `PIPELINE_VERSION` en `src/pdf/summarizer.py` (si no, devuelve caché vieja).
+3. Cambios pequeños y comentados. Si cambias la extracción o los prompts del resumidor, sube `EXTRACT_VERSION` / `PIPELINE_VERSION` en `local_ai_studio/pdf/summarizer.py` (si no, devuelve caché vieja).
 4. Ejecuta las pruebas y, si tocas seguridad, `bandit` y `pip-audit`.

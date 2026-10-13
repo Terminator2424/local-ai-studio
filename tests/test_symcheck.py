@@ -6,8 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.pdf import symcheck as sc  # noqa: E402
-from src.pdf.verify import chain_error, mark_numeric_errors  # noqa: E402
+from local_ai_studio.pdf import symcheck as sc
+from local_ai_studio.pdf.verify import chain_error, mark_numeric_errors
 
 
 class TestIdentidades(unittest.TestCase):
@@ -74,7 +74,7 @@ class TestDocumentoReal(unittest.TestCase):
     def test_ninguna_formula_correcta_del_pdf_se_marca(self):
         """El documento de Simpson es correcto: la verificación NO puede marcar ninguna de sus fórmulas."""
         import pymupdf
-        from src.pdf import mathgeom
+        from local_ai_studio.pdf import mathgeom
         doc = pymupdf.open(str(Path.home() / "Downloads" / "SIMPSOn (5) (2).pdf"))
         total, marcadas = 0, []
         for page in doc:

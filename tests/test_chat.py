@@ -9,10 +9,10 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.chat import engine as eng  # noqa: E402
-from src.chat.store import ChatStore, title_from  # noqa: E402
-from src.core import model_manager as mm  # noqa: E402
-from src.core.utils import Cancelled  # noqa: E402
+from local_ai_studio.chat import engine as eng
+from local_ai_studio.chat.store import ChatStore, title_from
+from local_ai_studio.core import model_manager as mm
+from local_ai_studio.core.errors import Cancelled
 
 CFG = {"ollama": {"host": "http://localhost:11434"}}
 
@@ -208,7 +208,7 @@ class TestVisorSeguro(unittest.TestCase):
     """La salida de un modelo no es de fiar: no puede cargar nada de fuera ni ejecutar HTML."""
 
     def html(self, md):
-        from src.core.mdview import md_to_html
+        from local_ai_studio.core.mdview import md_to_html
         return md_to_html(md, "light", "Segoe UI", formulas=False, safe=True)[0]
 
     def test_imagen_externa_bloqueada(self):
@@ -234,12 +234,12 @@ class TestVisorSeguro(unittest.TestCase):
         self.assertNotIn("<img", h)
 
     def test_formulas_siguen_funcionando_como_imagen_embebida(self):
-        from src.core.mdview import md_to_html
+        from local_ai_studio.core.mdview import md_to_html
         h = md_to_html("Vale $x^2$", "light", "Segoe UI", formulas=True, safe=True)[0]
         self.assertIn("data:image/png;base64", h)
 
     def test_el_modo_normal_no_cambia(self):
-        from src.core.mdview import md_to_html
+        from local_ai_studio.core.mdview import md_to_html
         h = md_to_html("[a](http://x.example)", "light", "Segoe UI", formulas=False)[0]
         self.assertIn("href", h)
 
@@ -247,7 +247,7 @@ class TestVisorSeguro(unittest.TestCase):
 class TestPreferenciasYRender(unittest.TestCase):
     def test_preferencias_validan_tipos_y_rangos(self):
         import json
-        from src.chat.store import DEFAULT_PREFS, load_prefs, save_prefs
+        from local_ai_studio.chat.store import DEFAULT_PREFS, load_prefs, save_prefs
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "prefs.json"
             self.assertEqual(load_prefs(p), DEFAULT_PREFS)                       # no existe: valores por defecto
@@ -268,7 +268,7 @@ class TestPreferenciasYRender(unittest.TestCase):
             self.assertEqual(load_prefs(p)["temperature"], 1.2)
 
     def test_html_de_la_conversacion(self):
-        from src.chat import render
+        from local_ai_studio.chat import render
         msgs = [SimpleNamespace(role="user", content="Hola **mundo**", images=[]),
                 SimpleNamespace(role="assistant", content="Fórmula $x^2$", images=[]),
                 SimpleNamespace(role="system", content="secreto", images=[])]
@@ -279,17 +279,17 @@ class TestPreferenciasYRender(unittest.TestCase):
         self.assertNotIn("secreto", h)                  # el system prompt no se muestra como mensaje
 
     def test_html_escapa_el_nombre_de_las_imagenes(self):
-        from src.chat import render
+        from local_ai_studio.chat import render
         h = render.message_html("user", "mira", "light", "Segoe UI", formulas=False, images=("C:/x/<b>.png",))
         self.assertNotIn("<b>.png", h)
         self.assertIn("&lt;b&gt;.png", h)
 
     def test_el_mensaje_en_vivo_lleva_id_para_actualizarlo(self):
-        from src.chat import render
+        from local_ai_studio.chat import render
         self.assertIn("id='live'", render.message_html("assistant", "...", "dark", "Segoe UI", formulas=False, element_id="live"))
 
     def test_esqueleto_contiene_el_contenedor(self):
-        from src.chat import render
+        from local_ai_studio.chat import render
         self.assertIn("id='msgs'", render.skeleton("dark", "Segoe UI"))
         self.assertIn("Todo se queda en tu equipo", render.empty_html("light", "Segoe UI"))
 
