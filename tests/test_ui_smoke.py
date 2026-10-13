@@ -36,6 +36,23 @@ study = app.pages["study"]; assert study.model_var.get() == "llama3.1:8b"
 app.pages["settings"]._show_storage([])
 app.pages["settings"]._show_network()
 assert "Activa" in app.pages["settings"].net_lbl.cget("text"), app.pages["settings"].net_lbl.cget("text")
+# protocolo de la GPU: con un trabajo en curso, el resto se niega con un aviso y NO guarda ni arranca nada
+from tkinter import messagebox
+avisos = []
+messagebox.showinfo = lambda title, msg, **k: avisos.append((title, msg))
+assert app.manager.begin_job("Resumir PDF") is None
+assert app.begin_job("Generar imagen") is False and "Resumir PDF" in avisos[-1][1], avisos
+chat.input.delete("1.0", "end"); chat.input.insert("1.0", "hola")
+n_antes = len(avisos); chat._send()
+assert len(avisos) == n_antes + 1 and chat.input.get("1.0", "end").strip() == "hola", "el chat debe conservar el texto"
+assert not chat.streaming and chat.conv_id is None, "no debe crear conversación"
+docs._start_index([])
+assert docs.working is False
+app._tick_status(); assert "Trabajando: Resumir PDF" in app.status_lbl.cget("text"), app.status_lbl.cget("text")
+app.end_job("Resumir PDF")
+assert app.begin_job("Generar imagen") is True
+app.end_job("Generar imagen")
+assert app.manager.current_job is None
 app._toggle_dark(); app.update(); app._toggle_dark(); app.update()
 app.destroy()
 print("OK", len(PAGES))

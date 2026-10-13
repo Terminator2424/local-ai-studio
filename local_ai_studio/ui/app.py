@@ -116,6 +116,28 @@ class StudioApp(_Base):
     def _on_manager_state(self, state: str):
         self._state_text = state            # se muestra en el siguiente ciclo del hilo principal (no se toca Tk desde otro hilo)
 
+    def job_busy(self) -> bool:
+        """¿Hay un trabajo pesado en curso? Si lo hay, avisa al usuario (para comprobarlo antes de guardar nada)."""
+        other = self.manager.current_job
+        if other:
+            self._tell_busy(other)
+        return bool(other)
+
+    def begin_job(self, name: str) -> bool:
+        """Reserva la GPU para `name`; si otro trabajo la tiene, lo explica y devuelve False."""
+        other = self.manager.begin_job(name)
+        if other:
+            self._tell_busy(other)
+        return other is None
+
+    def end_job(self, name: str) -> None:
+        self.manager.end_job(name)
+
+    @staticmethod
+    def _tell_busy(other: str) -> None:
+        messagebox.showinfo("La GPU está ocupada", f"Ahora mismo está en curso: «{other}».\n\nCon 8 GB de VRAM solo cabe un trabajo "
+                            "pesado a la vez (se descargarían los modelos el uno al otro). Espera a que termine o cancélalo.")
+
     def _tick_status(self):
         free = ""
         try:
@@ -125,7 +147,8 @@ class StudioApp(_Base):
         except Exception as exc:  # noqa: BLE001  (la barra de estado es informativa: nunca debe romper la ventana)
             log.debug("No se pudo leer la VRAM: %s", exc)
         mem = f"En memoria: {self._state_text}" if self._state_text != "libre" else "Sin modelo cargado"
-        self.status_lbl.configure(text="  ·  ".join(x for x in (mem, free) if x))
+        job = f"Trabajando: {self.manager.current_job}" if self.manager.current_job else ""
+        self.status_lbl.configure(text="  ·  ".join(x for x in (job, mem, free) if x))
         self.after(2500, self._tick_status)
 
     # --------------------------------------------------------------- páginas

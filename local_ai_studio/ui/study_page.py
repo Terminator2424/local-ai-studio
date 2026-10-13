@@ -160,6 +160,8 @@ class StudyPage(ctk.CTkFrame):
         if key == "solve" and not exercise:
             messagebox.showinfo("Falta el ejercicio", "Escribe el ejercicio que quieres resolver.")
             return
+        if not self.app.begin_job("Estudiar"):
+            return
         self.working = True
         self.cancel.clear()
         self.go_btn.configure(text="Detener")
@@ -171,6 +173,12 @@ class StudyPage(ctk.CTkFrame):
         threading.Thread(target=self._worker, args=(key, source, exercise, self.model_var.get()), daemon=True).start()
 
     def _worker(self, key: str, source: str, exercise: str, model: str):
+        try:
+            self._generate(key, source, exercise, model)
+        finally:
+            self.app.end_job("Estudiar")
+
+    def _generate(self, key: str, source: str, exercise: str, model: str):
         try:
             self.app.manager.use_llm(model)
             reply = self.engine.stream(model, tasks.messages(key, source, exercise), Params(0.3, 0.9, 1200, 8192), self.cancel)

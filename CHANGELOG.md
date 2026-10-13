@@ -17,7 +17,9 @@ técnica ([docs/AUDITORIA.md](docs/AUDITORIA.md)).
 - **Ajustes**: panel de almacenamiento con limpieza segura y poda automática, estado de la barrera de red.
 - `python -m local_ai_studio` con `--doctor` y `--version`; `LOCAL_AI_STUDIO_HOME` para mover todos los datos.
 - Integración continua, `pyproject.toml` (ruff, mypy), `requirements` separados (ejecución, imágenes, desarrollo), licencia MIT.
-- 322 pruebas, incluidas las de arquitectura, higiene del repositorio y una prueba de humo de la interfaz real.
+- **Un solo trabajo pesado a la vez en la GPU**: si ya hay uno en curso (resumir, generar imagen, chat, indexar…), el segundo se niega con
+  un aviso claro en lugar de pisarle los modelos en la VRAM; la barra de estado muestra «Trabajando: …».
+- 330 pruebas, incluidas las de arquitectura, higiene del repositorio y una prueba de humo de la interfaz real.
 
 ### Cambiado
 - Paquete `src` → **`local_ai_studio`**; `core/utils.py` dividido en módulos de una sola responsabilidad; capas sin ciclos.

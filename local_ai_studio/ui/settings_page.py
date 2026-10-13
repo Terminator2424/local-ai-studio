@@ -279,6 +279,9 @@ class SettingsPage(ctk.CTkFrame):
         self.pull_lbl.configure(text=f"Verificando {m.title}… (puede tardar)")
 
     def _free(self):
+        if self.app.job_busy():          # liberar la VRAM en pleno trabajo lo rompería
+            return
+
         def work():
             try:
                 self.manager.free_all()

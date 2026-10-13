@@ -228,6 +228,8 @@ class GenPage(ctk.CTkFrame):
         except GenerationError as exc:
             messagebox.showwarning("Revisa los parámetros", str(exc))
             return
+        if not self.app.begin_job("Generar imagen"):
+            return
         if self.gen is None:
             self.gen = ImageGenerator(self.app.manager)
         self.cancel.clear()
@@ -239,6 +241,12 @@ class GenPage(ctk.CTkFrame):
         threading.Thread(target=self._gen_worker, args=(m.key, params), daemon=True).start()
 
     def _gen_worker(self, key: str, params: GenParams):
+        try:
+            self._generate_all(key, params)
+        finally:
+            self.app.end_job("Generar imagen")
+
+    def _generate_all(self, key: str, params: GenParams):
         try:
             if self.gen is None:
                 raise RuntimeError("El generador de imágenes no está inicializado.")

@@ -442,6 +442,8 @@ class PdfPage(ctk.CTkFrame):
         settings = self._read_settings()
         if not settings:
             return
+        if not self.app.begin_job("Resumir PDF"):
+            return
         try:   # la VRAM libre cambia con el uso del PC: se reevalúa el hardware en cada ejecución
             self.cfg = load_config()
             self.diag_lbl.configure(text=describe_hardware(self.cfg))
@@ -460,6 +462,13 @@ class PdfPage(ctk.CTkFrame):
 
     def _worker(self, todo: list[int], settings: dict):
         """Hilo de trabajo: nunca toca widgets, solo envía mensajes a la cola."""
+        try:
+            self._run_queue(todo, settings)
+        finally:
+            self.app.end_job("Resumir PDF")
+            self.q.put(("all_done",))
+
+    def _run_queue(self, todo: list[int], settings: dict):
         ui = QueueUI(self.q)
         try:      # con 8 GB no caben a la vez un modelo de Ollama y el de imágenes: se libera el de imágenes
             self.app.manager.use_llm(self.cfg["ollama"]["vision_model"])
@@ -482,7 +491,6 @@ class PdfPage(ctk.CTkFrame):
             except Exception as exc:
                 log.exception("Error procesando %s", path)
                 self.q.put(("file_error", i, f"{type(exc).__name__}: {exc}"))
-        self.q.put(("all_done",))
 
     def _cancel(self):
         self.cancel.set()

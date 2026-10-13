@@ -27,6 +27,28 @@ class ModelManager:
         self.state = FREE                       # «libre», «chat: qwen2.5:7b» o «imagen: sd15»
         self._image_unloader: Callable[[], None] | None = None
         self.listeners: list[Callable[[str], None]] = []
+        self._job_lock = threading.Lock()
+        self._job: str | None = None            # el trabajo pesado en curso (la GPU solo admite uno a la vez)
+
+    # --------------------------------------------------------- trabajo en curso
+    @property
+    def current_job(self) -> str | None:
+        return self._job
+
+    def begin_job(self, name: str) -> str | None:
+        """Reserva la GPU para un trabajo pesado. Devuelve None si la consigue, o el nombre del trabajo que ya la tiene.
+        Con 8 GB de VRAM un resumen y una imagen a la vez se echarían los modelos el uno al otro."""
+        with self._job_lock:
+            if self._job is not None:
+                return self._job
+            self._job = name
+            return None
+
+    def end_job(self, name: str) -> None:
+        """Libera la reserva (solo si es la de `name`: un error nunca libera el trabajo de otro)."""
+        with self._job_lock:
+            if self._job == name:
+                self._job = None
 
     # ------------------------------------------------------------------ estado
     def _set(self, state: str):

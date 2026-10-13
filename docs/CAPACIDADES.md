@@ -270,7 +270,11 @@ Con 8 GB no caben a la vez un modelo de chat y uno de imágenes. El **gestor de 
 
 - Antes de generar imágenes **descarga los modelos de Ollama** (`keep_alive=0`); antes de chatear **libera el pipeline de imágenes**
   y vacía la caché de CUDA.
-- La **barra de estado** muestra qué hay en memoria y la VRAM libre; al cambiar de función hay una espera de unos segundos.
+- **Un solo trabajo pesado a la vez.** Resumir PDF, Generar imagen, Chat, Documentos (indexar o preguntar) y Estudiar reservan la GPU
+  al empezar; si otro ya la tiene, el segundo **se niega con un aviso** («Ahora mismo está en curso: …») y no pierde lo escrito.
+  «Liberar toda la VRAM» también se bloquea mientras haya un trabajo en curso. Sin esto, dos trabajos a la vez se echarían los modelos
+  el uno al otro y uno acabaría con un error de memoria.
+- La **barra de estado** muestra qué hay en memoria, la VRAM libre y el trabajo en curso («Trabajando: …»); al cambiar de función hay una espera de unos segundos.
 - **Ajuste automático al hardware** (sin tocar tu `config.yaml`; se desactiva con `hardware.auto: false`):
 
 | VRAM | Modelo de resumen | Contexto |

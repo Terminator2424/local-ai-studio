@@ -437,6 +437,8 @@ class ChatPage(ctk.CTkFrame):
         text = self.input.get("1.0", "end").strip()
         if not text:
             return
+        if self.app.job_busy():          # el texto se queda en la caja: se puede enviar cuando termine el otro trabajo
+            return
         model = self.model_var.get()
         images = list(self.attachments)
         if images and not is_vision(model):
@@ -464,7 +466,7 @@ class ChatPage(ctk.CTkFrame):
         self._start_generation(model, system, history, text, images, params)
 
     def _regenerate(self):
-        if self.streaming or self.conv_id is None:
+        if self.streaming or self.conv_id is None or self.app.job_busy():
             return
         msgs = self.store.messages(self.conv_id)
         if not msgs or msgs[-1].role != "assistant":
@@ -483,6 +485,8 @@ class ChatPage(ctk.CTkFrame):
                                last_user.images, params)
 
     def _start_generation(self, model, system, history, text, images, params: Params):
+        if not self.app.begin_job("Chat"):
+            return
         msgs = build_messages(system, history, text, images, is_vision(model))
         self._live_text = ""
         self._start_stream_ui("escribiendo")
@@ -502,6 +506,12 @@ class ChatPage(ctk.CTkFrame):
             threading.Thread(target=self._worker, args=(model, msgs, params), daemon=True).start()
 
     def _worker(self, model: str, msgs: list, params: Params):
+        try:
+            self._stream_reply(model, msgs, params)
+        finally:
+            self.app.end_job("Chat")
+
+    def _stream_reply(self, model: str, msgs: list, params: Params):
         t0 = time.time()
         try:
             self.q.put(("status", "preparando la VRAM…"))
@@ -516,6 +526,12 @@ class ChatPage(ctk.CTkFrame):
             self.q.put(("error", f"{type(exc).__name__}: {exc}"))
 
     def _agent_worker(self, model: str, msgs: list, params: Params):
+        try:
+            self._agent_reply(model, msgs, params)
+        finally:
+            self.app.end_job("Chat")
+
+    def _agent_reply(self, model: str, msgs: list, params: Params):
         t0 = time.time()
         try:
             self.q.put(("status", "preparando la VRAM…"))

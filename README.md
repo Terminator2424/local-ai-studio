@@ -83,7 +83,7 @@ código se verifican con código. Lo que no se puede comprobar sale con ⚠ y di
 python -m pip install -r requirements-dev.txt
 python -m ruff check .                                   # 0 errores
 python -m mypy local_ai_studio                           # 0 errores
-python -m unittest discover -s tests                     # 322 pruebas, sin Ollama ni GPU
+python -m unittest discover -s tests                     # 330 pruebas, sin Ollama ni GPU
 python -m bandit -r local_ai_studio app.py -ll           # 0 hallazgos
 ```
 La integración continua (GitHub Actions) ejecuta lo mismo en cada cambio. La capa de lógica tiene un 81 % de cobertura; la interfaz
@@ -104,7 +104,7 @@ local_ai_studio/
   study/   tarjetas y verificación de pasos
   images/  catálogo y descarga verificada, generación (diffusers), edición (Pillow)
   ui/      ventana principal y páginas (CustomTkinter)
-tests/                       322 pruebas
+tests/                       330 pruebas
 docs/                        capacidades, arquitectura y auditoría
 ```
 Datos de usuario (fuera de git): `config.yaml`, `resumenes/`, `imagenes/`, `conversations/`, `outputs/`, `models/`, `workspace/`, `logs/`.

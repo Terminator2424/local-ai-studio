@@ -13,7 +13,7 @@ volvió a medir.** El estado de partida es el commit `4f382f2`; el final, el de 
 |---|:-:|:-:|---|
 | Estructura y arquitectura | 6 | **9** | El paquete se llamaba `src`; `utils.py` mezclaba 7 responsabilidades; había un ciclo `core ↔ pdf`; 3 copias de `sha256_file`. Ahora: paquete `local_ai_studio`, 15 módulos de una sola responsabilidad en `core/`, capas sin ciclos y vigiladas por una prueba. |
 | Calidad estática | 5 | **9,5** | `ruff` 194 hallazgos reales → **0**; `mypy` más de 30 avisos → **0**; 7 funciones muertas, 1 opción de configuración muerta y 4 dependencias sin uso eliminadas; complejidad máxima F(58) → E(36), media A (4,4). |
-| Pruebas | 6,5 | **8,5** | 232 → **322** pruebas. El orquestador `summarizer.py` (602 líneas) pasó de 0 % a 77 %; la **capa de lógica** está al **81 %** (global 53 %: la interfaz la ejercita un test de humo en un proceso aparte que `coverage` no mide). Nuevas: arquitectura, higiene del repo, interfaz real, almacenamiento, roles. |
+| Pruebas | 6,5 | **8,5** | 232 → **330** pruebas. El orquestador `summarizer.py` (602 líneas) pasó de 0 % a 77 %; la **capa de lógica** está al **81 %** (global 53 %: la interfaz la ejercita un test de humo en un proceso aparte que `coverage` no mide). Nuevas: arquitectura, higiene del repo, interfaz real, almacenamiento, roles. |
 | Seguridad | 8 | **9** | Se cerraron 3 huecos (instalación automática de paquetes, bomba de descompresión, una prueba de seguridad vacía). `bandit`: 0; `pip-audit`: sin vulnerabilidades conocidas. |
 | Robustez y manejo de errores | 6,5 | **9** | Fugas de archivos al cancelar, índice no transaccional, caída con barra invertida final, cancelación accidental, configuración incompleta, reintentos absurdos. Todo corregido con prueba. |
 | Rendimiento | 6 | **9** | «Documentos» abría en **10,5 s** y ahora en **0,4 s** (causa: IPv6 + un cliente HTTP por consulta). |
@@ -92,7 +92,7 @@ python -m pip install -r requirements-dev.txt
 python -m ruff check .                                              # estilo y errores: 0
 python -m mypy local_ai_studio                                      # tipos: 0
 python -m coverage run --source=local_ai_studio -m unittest discover -s tests
-python -m coverage report --skip-empty                              # 322 pruebas
+python -m coverage report --skip-empty                              # 330 pruebas
 python -m bandit -r local_ai_studio app.py -ll                      # seguridad estática: 0
 python -m pip_audit -r requirements.txt                             # dependencias: sin vulnerabilidades conocidas
 python -m radon cc local_ai_studio -n C -s                          # complejidad

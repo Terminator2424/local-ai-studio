@@ -180,7 +180,7 @@ class DocsPage(ctk.CTkFrame):
             self._start_index(pdfs)
 
     def _start_index(self, paths: list[Path]):
-        if self.working:
+        if self.working or not self.app.begin_job("Indexar documentos"):
             return
         self.working = True
         self.mode = "index"
@@ -189,6 +189,12 @@ class DocsPage(ctk.CTkFrame):
         threading.Thread(target=self._index_worker, args=(paths,), daemon=True).start()
 
     def _index_worker(self, paths: list[Path]):
+        try:
+            self._index_all(paths)
+        finally:
+            self.app.end_job("Indexar documentos")
+
+    def _index_all(self, paths: list[Path]):
         done = skipped = failed = 0
         try:
             try:
@@ -230,6 +236,8 @@ class DocsPage(ctk.CTkFrame):
             messagebox.showinfo("Ningún documento marcado", "Marca al menos un documento de la lista para preguntarle.")
             return
         scope = None if len(ids) == len(self.selected) else ids          # None = todos
+        if not self.app.begin_job("Preguntar a documentos"):
+            return
         self.working = True
         self.mode = "ask"
         self.cancel.clear()
@@ -240,6 +248,12 @@ class DocsPage(ctk.CTkFrame):
         threading.Thread(target=self._ask_worker, args=(q, self.model_var.get(), scope), daemon=True).start()
 
     def _ask_worker(self, question: str, model: str, doc_ids: list[int] | None = None):
+        try:
+            self._answer(question, model, doc_ids)
+        finally:
+            self.app.end_job("Preguntar a documentos")
+
+    def _answer(self, question: str, model: str, doc_ids: list[int] | None):
         try:
             self.app.manager.use_llm(model)
             hits = self.index.search(question, k=6, doc_ids=doc_ids)
