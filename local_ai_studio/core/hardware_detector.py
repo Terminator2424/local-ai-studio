@@ -174,52 +174,58 @@ def effective_free_gb(info: HardwareInfo, cfg: dict) -> float:
     return info.vram_free_gb
 
 
-def decide(info: HardwareInfo, installed: set[str], cfg: dict, free_gb: float | None = None) -> AutoConfig:
-    hcfg = cfg.get("hardware", {})
-    base_text = cfg["ollama"]["text_model"]
-    base_vis = cfg["ollama"]["vision_model"]
-    reasons: list[str] = []
-    vram = info.vram_total_gb if info.vendor == "nvidia" else 0.0
-    free = (free_gb if free_gb is not None else info.vram_free_gb) if info.vendor == "nvidia" else 0.0
-
-    # --- modelo de texto
-    text_model = base_text
+def _pick_text_model(info: HardwareInfo, installed: set[str], hcfg: dict, base_text: str, reasons: list[str]) -> str:
+    """Modelo de texto: el grande si hay VRAM de sobra y está instalado; el pequeño si no hay GPU y falta RAM."""
     big = hcfg.get("large_model", "qwen2.5:14b")
     small = hcfg.get("small_model", "qwen2.5:3b")
+    vram = info.vram_total_gb if info.vendor == "nvidia" else 0.0
     if vram >= float(hcfg.get("large_model_min_vram_gb", 12)):
         if any(m == big or m.startswith(big + "-") for m in installed):
-            text_model = big
             reasons.append(f"VRAM {vram:.0f} GB ≥ 12 GB → modelo grande {big}")
-        else:
-            reasons.append(f"VRAM {vram:.0f} GB permite {big}, pero no está instalado (ollama pull {big}); se usa {base_text}")
+            return big
+        reasons.append(f"VRAM {vram:.0f} GB permite {big}, pero no está instalado (ollama pull {big}); se usa {base_text}")
     elif info.vendor != "nvidia" and info.ram_gb and info.ram_gb < 8:
-        if any(m == small for m in installed):
-            text_model = small
         reasons.append(f"Sin GPU y {info.ram_gb:.0f} GB de RAM: se recomienda {small}")
+        return small if any(m == small for m in installed) else base_text
+    return base_text
 
-    # --- contexto
-    if info.vendor != "nvidia":
+
+def _context_for_vram(vram: float, is_big_model: bool) -> int:
+    """num_ctx según la VRAM total (GPU NVIDIA): más memoria, más contexto."""
+    if vram < 4:
+        return 2048
+    if vram < 6:
+        return 4096
+    if vram < 8:
+        return 8192
+    if vram < 12:
+        return 16384
+    if is_big_model:
+        return 8192 if vram < 16 else 16384        # el 14B ocupa ~9 GB de pesos
+    return 16384
+
+
+def decide(info: HardwareInfo, installed: set[str], cfg: dict, free_gb: float | None = None) -> AutoConfig:
+    hcfg = cfg.get("hardware", {})
+    base_vis = cfg["ollama"]["vision_model"]
+    reasons: list[str] = []
+    nvidia = info.vendor == "nvidia"
+    vram = info.vram_total_gb if nvidia else 0.0
+    free = (free_gb if free_gb is not None else info.vram_free_gb) if nvidia else 0.0
+
+    text_model = _pick_text_model(info, installed, hcfg, cfg["ollama"]["text_model"], reasons)
+
+    if nvidia:
+        ctx = _context_for_vram(vram, text_model == hcfg.get("large_model", "qwen2.5:14b"))
+        reasons.append(f"VRAM {vram:.1f} GB → num_ctx {ctx}")
+    else:
         ctx = 4096
         reasons.append("Sin GPU NVIDIA → num_ctx 4096 (CPU)")
-    elif vram < 4:
-        ctx = 2048
-    elif vram < 6:
-        ctx = 4096
-    elif vram < 8:
-        ctx = 8192
-    elif vram < 12:
-        ctx = 16384
-    elif text_model == big:
-        ctx = 8192 if vram < 16 else 16384        # el 14B ocupa ~9 GB de pesos
-    else:
-        ctx = 16384
-    if info.vendor == "nvidia":
-        reasons.append(f"VRAM {vram:.1f} GB → num_ctx {ctx}")
-    ctx = int(min(ctx, cfg["ollama"]["text_options"].get("num_ctx", 16384))) if hcfg.get("never_exceed_config_ctx", True) else ctx
+    if hcfg.get("never_exceed_config_ctx", True):
+        ctx = int(min(ctx, cfg["ollama"]["text_options"].get("num_ctx", 16384)))
     vctx = min(ctx, int(cfg["ollama"]["vision_options"].get("num_ctx", 8192)))
 
-    # --- capas en GPU
-    if info.vendor == "nvidia":
+    if nvidia:
         t_gpu = _fit_layers(text_model, ctx, free or vram)
         v_gpu = _fit_layers(base_vis, vctx, free or vram)
         if t_gpu is not None:

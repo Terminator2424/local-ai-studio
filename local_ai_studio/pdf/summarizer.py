@@ -77,6 +77,34 @@ def archive_previous(out: Path, new_md: str) -> Path | None:
     return dest
 
 
+class _NoteBlocks:
+    """Reparte las notas por tipo de apartado. Una línea ya escrita en un apartado de prosa no se repite en otro (ahorra tokens)."""
+
+    _CITE = re.compile(r"\s*\((?:p|pp|pág|págs|pags|page|pages)\.?\s*\d+(?:\s*[-–]\s*\d+)?\)", re.I)
+
+    def __init__(self, sections: list[tuple[str, dict]]):
+        self.sections = sections
+        self.seen_global: set[str] = set()
+
+    def block(self, keys: tuple[str, ...], mode: str) -> str:
+        """mode: 'prose' = deduplica texto largo entre apartados; 'local' = deduplica solo dentro del apartado;
+        'section' = el solape entre fragmentos repite los enunciados dentro de una misma sección; 'none' = no deduplica."""
+        out = []
+        seen_local: set[str] = set()
+        for heading, sec in self.sections:
+            body = "\n\n".join(sec[k] for k in keys if k in sec)
+            body = self._CITE.sub("", body)   # el encabezado de la sección ya indica las páginas
+            if mode == "prose":
+                body = unique_lines(body, self.seen_global, min_len=70, prose_only=True)
+            elif mode == "local":
+                body = unique_lines(body, seen_local)
+            elif mode == "section":
+                body = unique_lines(body, set(), min_len=3)
+            if body.strip():
+                out.append(f"### {heading}\n\n{body.strip()}")
+        return "\n\n".join(out)
+
+
 class UI:
     """Interfaz de callbacks; la GUI la sustituye por una versión que usa colas."""
     def progress(self, frac: float, msg: str): ...
@@ -600,12 +628,9 @@ class Summarizer:
         per = max(200, budget // max(1, len(texts)))
         return "\n\n".join(t[:per] for t in texts)
 
-    def _synthesize(self, chunks: list[Chunk], notes: list[str], n_pages: int, source_text: str = "",
-                    figures: dict | None = None) -> str:
-        figures = figures or {}
-        """Resumen ejecutivo + cuerpo (notas verificadas, sin reescribir) + conclusiones generales."""
+    def _executive_overview(self, chunks: list[Chunk], notes: list[str], n_pages: int, source_text: str) -> str:
+        """Resumen ejecutivo y conclusiones generales: lo ÚNICO que redacta el modelo en la síntesis, con Self-Refine y saneado."""
         lb = self.prompts["labels"]
-        rcfg = self.cfg["reduce"]
         iters = int(self.s["refine_iterations"])
         # Notas comprimidas para el resumen ejecutivo: solo ideas principales y conclusiones de cada fragmento
         brief = []
@@ -613,7 +638,7 @@ class Summarizer:
             txt = section_text(note, ("Ideas principales", "Main ideas", "Conclusiones", "Conclusions"))
             if txt:
                 brief.append(f"[{lb['pp']} {ch.pages}] {ch.title}\n{txt}".strip())
-        brief_txt = self._fit_notes(brief, int(rcfg["batch_chars"]))
+        brief_txt = self._fit_notes(brief, int(self.cfg["reduce"]["batch_chars"]))
         common = dict(doc_title=self.doc_title, lang_name=self.lang_name, final_detail="", n_chunks=len(chunks),
                       n_pages=n_pages)
         self.ui.phase("reduce")
@@ -631,9 +656,11 @@ class Summarizer:
             overview, dropped = scrub_text_numbers(overview, source_text)
             if dropped:
                 self._log(f"Saneado del resumen ejecutivo: {dropped} línea(s) con cifras sin respaldo eliminadas")
+        return overview
 
-        # Estructura fija: Título → Resumen ejecutivo → Contenido principal → Problemas → Fórmulas clave →
-        # Conclusiones → Figuras y tablas. Se reorganizan las notas por tipo de sección (sin reescribirlas).
+    def _note_sections(self, chunks: list[Chunk], notes: list[str]) -> list[tuple[str, dict]]:
+        """(encabezado, secciones) de cada fragmento: las notas se reorganizan por tipo, sin reescribirlas."""
+        lb = self.prompts["labels"]
         sections = []
         last_title = ""
         for ch, note in zip(chunks, notes, strict=True):
@@ -644,28 +671,13 @@ class Summarizer:
             last_title = title
             heading = f"{title} ({lb['cont']}, {lb['pp']} {ch.pages})" if cont else f"{title} ({lb['pp']} {ch.pages})"
             sections.append((heading, parse_note(note)))
+        return sections
 
-        seen_global: set[str] = set()      # una línea ya escrita en cualquier apartado no se repite (ahorra tokens)
-        cite_re = re.compile(r"\s*\((?:p|pp|pág|págs|pags|page|pages)\.?\s*\d+(?:\s*[-–]\s*\d+)?\)", re.I)
-
-        def block(keys: tuple[str, ...], mode: str) -> str:
-            """mode: 'prose' = deduplica texto largo entre apartados; 'local' = deduplica solo dentro del apartado;
-            'none' = no deduplica (enunciados: se repiten legítimamente entre problemas)."""
-            out = []
-            seen_local: set[str] = set()
-            for heading, sec in sections:
-                body = "\n\n".join(sec[k] for k in keys if k in sec)
-                body = cite_re.sub("", body)   # el encabezado de la sección ya indica las páginas
-                if mode == "prose":
-                    body = unique_lines(body, seen_global, min_len=70, prose_only=True)
-                elif mode == "local":
-                    body = unique_lines(body, seen_local)
-                elif mode == "section":      # el solape entre fragmentos repite los enunciados dentro de una misma sección
-                    body = unique_lines(body, set(), min_len=3)
-                if body.strip():
-                    out.append(f"### {heading}\n\n{body.strip()}")
-            return "\n\n".join(out)
-
+    def _build_parts(self, overview: str, sections: list[tuple[str, dict]], figures: dict) -> list[str]:
+        """Estructura fija: Título → Resumen ejecutivo → Contenido principal → Problemas → Fórmulas clave → Conclusiones →
+        Figuras y tablas."""
+        lb = self.prompts["labels"]
+        body = _NoteBlocks(sections)
         m = re.search(r"^##\s+(conclusiones generales|general conclusions).*$", overview, re.I | re.M)
         head, concl = (overview[:m.start()].rstrip(), overview[m.start():].strip()) if m else (overview.strip(), "")
         concl = re.sub(r"^##\s+.*\n?", "", concl, count=1).strip()
@@ -675,37 +687,54 @@ class Summarizer:
             for _, sec in sections:
                 if "data" not in sec and "ideas" in sec:
                     sec["data"] = sec["ideas"]
-        for title, text in ((lb["main"], block(main_keys, "prose")),
-                            (lb["problems"], block(("statements",), "section")),
-                            (lb["formulas"], block(("formulas",), "local"))):
+        for title, text in ((lb["main"], body.block(main_keys, "prose")),
+                            (lb["problems"], body.block(("statements",), "section")),
+                            (lb["formulas"], body.block(("formulas",), "local"))):
             if text:
                 parts.append(f"## {title}\n\n{text}")
-        by_section = "" if self.level_key == "ia" else block(("conclusions",), "prose")
+        by_section = "" if self.level_key == "ia" else body.block(("conclusions",), "prose")
         concl_md = concl + (f"\n\n### {lb['by_section']}\n\n{by_section}" if by_section else "")
         if concl_md.strip():
             parts.append(f"## {lb['conclusions']}\n\n{concl_md.strip()}")
-        figs_text = "" if self.level_key == "ia" else block(("figures",), "prose")
+        figs_text = "" if self.level_key == "ia" else body.block(("figures",), "prose")
         if figures:
             clip = (lambda t: t[:260].rsplit(" ", 1)[0] + "…") if self.level_key == "ia" else (lambda t: t)
             figs_text += ("\n\n" if figs_text else "") + f"### {lb['vision_figs']}\n\n" + "\n\n".join(
                 f"**{lb['page']} {pn}.** {clip(' '.join(figures[pn].split()))}" for pn in sorted(figures))
         if figs_text.strip():
             parts.append(f"## {lb['figures']}\n\n{figs_text.strip()}")
-        # Presupuesto de tokens: en «Compacto IA» y «Normal» el resumen debe ser claramente más corto que el texto del PDF.
+        return parts
+
+    def _fit_token_budget(self, parts: list[str]) -> list[str]:
+        """En «Compacto IA» y «Normal» el resumen debe ser claramente más corto que el texto del PDF: si no lo es, se quita
+        primero lo descrito con visión y luego las conclusiones por sección."""
+        lb = self.prompts["labels"]
         target = {"ia": 0.5, "normal": 0.85}.get(self.level_key)
         src_tokens = getattr(self, "src_tokens", 0)
-        if target and src_tokens:
-            limit = target * src_tokens
-            tot = lambda: est_tokens("\n\n".join(parts))      # noqa: E731
-            if tot() > limit:       # 1.º se descartan los gráficos descritos con visión
-                parts = [p for p in parts if not p.startswith(f"## {lb['figures']}")]
-            if tot() > limit:       # 2.º las conclusiones por sección (quedan las generales)
-                parts = [re.sub(r"\n\n### " + re.escape(lb["by_section"]) + r".*", "", p, flags=re.S)
-                         if p.startswith(f"## {lb['conclusions']}") else p for p in parts]
-            if tot() > limit:
-                self._log(f"⚠ El resumen (≈{tot():,} tokens) supera el objetivo del nivel ({int(limit):,}); "
-                          "el documento es muy denso en datos.")
-        return "\n\n".join(parts)
+        if not (target and src_tokens):
+            return parts
+        limit = target * src_tokens
+
+        def tot() -> int:
+            return est_tokens("\n\n".join(parts))
+
+        if tot() > limit:       # 1.º se descartan los gráficos descritos con visión
+            parts = [p for p in parts if not p.startswith(f"## {lb['figures']}")]
+        if tot() > limit:       # 2.º las conclusiones por sección (quedan las generales)
+            parts = [re.sub(r"\n\n### " + re.escape(lb["by_section"]) + r".*", "", p, flags=re.S)
+                     if p.startswith(f"## {lb['conclusions']}") else p for p in parts]
+        if tot() > limit:
+            self._log(f"⚠ El resumen (≈{tot():,} tokens) supera el objetivo del nivel ({int(limit):,}); "
+                      "el documento es muy denso en datos.")
+        return parts
+
+    def _synthesize(self, chunks: list[Chunk], notes: list[str], n_pages: int, source_text: str = "",
+                    figures: dict | None = None) -> str:
+        """Resumen ejecutivo + cuerpo (notas verificadas, sin reescribir) + conclusiones generales."""
+        overview = self._executive_overview(chunks, notes, n_pages, source_text)
+        sections = self._note_sections(chunks, notes)
+        parts = self._build_parts(overview, sections, figures or {})
+        return "\n\n".join(self._fit_token_budget(parts))
 
     @staticmethod
     def _sanitize_overview(text: str) -> str:

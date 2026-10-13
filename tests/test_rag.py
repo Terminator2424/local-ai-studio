@@ -160,6 +160,14 @@ class TestRespuestas(unittest.TestCase):
         self.assertIn("[2] (a.pdf, p. 3)", m[1]["content"])
         self.assertTrue(m[1]["content"].endswith("PREGUNTA: ¿cuánto vale?"))
 
+    def test_con_varios_documentos_cada_fragmento_lleva_su_documento_y_se_pide_senalar_contradicciones(self):
+        hits = [Hit(1, 1, "informe_a.pdf", 4, "La cifra es 10.", 1.0), Hit(2, 2, "informe_b.pdf", 9, "La cifra es 12.", 0.9)]
+        m = ask.build_messages("¿cuál es la cifra?", hits)
+        self.assertIn("[1] (informe_a.pdf, p. 4)", m[1]["content"])
+        self.assertIn("[2] (informe_b.pdf, p. 9)", m[1]["content"])
+        self.assertIn("VARIOS documentos", m[0]["content"])
+        self.assertIn("contradicen", m[0]["content"])
+
     def test_respuesta_correcta_no_lleva_avisos(self):
         c = ask.check_answer("La complejidad vale 7 [1] y el volumen es 1080 [2].", self.HITS)
         self.assertTrue(c.clean)

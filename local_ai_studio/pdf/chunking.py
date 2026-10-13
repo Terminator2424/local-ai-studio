@@ -107,34 +107,34 @@ class RecursiveSplitter:
         return _Doc(text.strip(), {"start_index": pieces[0][1] + lead})
 
 
-def build_chunks(pages: list, chunk_size: int, chunk_overlap: int, separators: list[str],
-                 section_aware: bool = True) -> list[Chunk]:
-    """pages: lista de objetos con .number y .text. Inserta marcas de página y divide por secciones."""
-    pieces, marks, blocks = [], [], []
-    pos = 0
-    for p in pages:
-        if not p.text.strip():
-            continue
-        block = f"{PAGE_MARK.format(n=p.number)}\n{p.text.strip()}\n\n"
-        marks.append((pos, p.number))
-        blocks.append((pos, pos + len(block), len(PAGE_MARK.format(n=p.number)) + 1, len(p.text.strip()),
-                       getattr(p, "eqs", None) or []))
-        pieces.append(block)
-        pos += len(block)
-    full = "".join(pieces)
-    if not full.strip():
-        return []
+class _PageMap:
+    """El texto completo del documento (con una marca por página) y qué hay en cada posición."""
 
-    offsets = [s for s, _ in marks]
-    numbers = [n for _, n in marks]
+    def __init__(self, pages: list):
+        pieces: list[str] = []
+        self.marks: list[tuple[int, int]] = []           # (posición, nº de página)
+        self.blocks: list[tuple[int, int, int, int, list]] = []   # (inicio, fin, largo de la marca, largo del texto, fórmulas)
+        pos = 0
+        for p in pages:
+            if not p.text.strip():
+                continue
+            block = f"{PAGE_MARK.format(n=p.number)}\n{p.text.strip()}\n\n"
+            self.marks.append((pos, p.number))
+            self.blocks.append((pos, pos + len(block), len(PAGE_MARK.format(n=p.number)) + 1, len(p.text.strip()),
+                                getattr(p, "eqs", None) or []))
+            pieces.append(block)
+            pos += len(block)
+        self.full = "".join(pieces)
+        self._offsets = [s for s, _ in self.marks]
+        self._numbers = [n for _, n in self.marks]
 
-    def page_at(position: int) -> int:
-        return numbers[max(0, bisect.bisect_right(offsets, position) - 1)]
+    def page_at(self, position: int) -> int:
+        return self._numbers[max(0, bisect.bisect_right(self._offsets, position) - 1)]
 
-    def equations_for(a: int, b: int) -> list[str]:
+    def equations_for(self, a: int, b: int) -> list[str]:
         """Fórmulas de la imagen cuya posición relativa en la página cae dentro del tramo [a, b] del texto."""
         out: list[str] = []
-        for bs, be, mlen, plen, eqs in blocks:
+        for bs, be, mlen, plen, eqs in self.blocks:
             if not eqs or be <= a or bs >= b:
                 continue
             lo = max(a, bs + mlen) - bs - mlen
@@ -143,7 +143,9 @@ def build_chunks(pages: list, chunk_size: int, chunk_overlap: int, separators: l
             out += [e for rel, e in eqs if lo_r - 0.06 <= rel <= hi_r + 0.06 and e not in out]
         return out
 
-    # --- 1. Secciones -------------------------------------------------------
+
+def _section_bounds(full: str, chunk_size: int, section_aware: bool) -> list[tuple[int, int]]:
+    """(inicio, fin) de cada sección: se parte donde hay un encabezado y el tramo ya es lo bastante largo."""
     min_len = max(300, int(chunk_size * 0.3))
     bounds = [0]
     for start, strong in (_section_starts(full) if section_aware else []):
@@ -153,18 +155,28 @@ def build_chunks(pages: list, chunk_size: int, chunk_overlap: int, separators: l
     if len(full) - bounds[-1] < 120 and len(bounds) > 1:   # último tramo diminuto: se une al anterior
         bounds.pop()
     bounds.append(len(full))
-    sections = list(pairwise(bounds))
+    return list(pairwise(bounds))
 
+
+def _section_title(sec_text: str) -> str:
+    first_line = next((ln for ln in sec_text.splitlines() if ln.strip() and not _MARK_RE.fullmatch(ln.strip())), "")
+    fl = first_line.strip()
+    return _clean_title(fl) if (_STRONG_RE.fullmatch(fl) or _WEAK_RE.fullmatch(fl)) else ""
+
+
+def build_chunks(pages: list, chunk_size: int, chunk_overlap: int, separators: list[str],
+                 section_aware: bool = True) -> list[Chunk]:
+    """pages: lista de objetos con .number y .text. Inserta marcas de página y divide por secciones."""
+    pm = _PageMap(pages)
+    full = pm.full
+    if not full.strip():
+        return []
     splitter = RecursiveSplitter(chunk_size=chunk_size, chunk_overlap=min(chunk_overlap, chunk_size // 2),
                                  separators=separators)
-
-    # --- 2. Fragmentos por sección ---------------------------------------------
     chunks: list[Chunk] = []
-    for s_start, s_end in sections:
+    for s_start, s_end in _section_bounds(full, chunk_size, section_aware):
         sec_text = full[s_start:s_end]
-        first_line = next((ln for ln in sec_text.splitlines() if ln.strip() and not _MARK_RE.fullmatch(ln.strip())), "")
-        fl = first_line.strip()
-        title = _clean_title(fl) if (_STRONG_RE.fullmatch(fl) or _WEAK_RE.fullmatch(fl)) else ""
+        title = _section_title(sec_text)
         if len(sec_text) <= chunk_size * 1.3:
             parts = [(sec_text, s_start)]
         else:
@@ -173,10 +185,10 @@ def build_chunks(pages: list, chunk_size: int, chunk_overlap: int, separators: l
         for j, (text, abs_start) in enumerate(parts):
             if not text.strip():
                 continue
-            p_start = page_at(abs_start)
-            p_end = page_at(abs_start + len(text) - 1)
+            p_start = pm.page_at(abs_start)
+            p_end = pm.page_at(abs_start + len(text) - 1)
             if not _MARK_RE.match(text.lstrip()):
                 text = f"{PAGE_MARK.format(n=p_start)}\n{text}"
             chunks.append(Chunk(len(chunks) + 1, text.strip(), p_start, p_end, title, cont=j > 0,
-                                eqs=equations_for(abs_start, abs_start + len(text))))
+                                eqs=pm.equations_for(abs_start, abs_start + len(text))))
     return chunks
