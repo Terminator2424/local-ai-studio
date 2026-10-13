@@ -1,0 +1,19 @@
+# Instalación (una vez):  pip install pre-commit detect-secrets  &&  pre-commit install
+# Cada «git commit» escaneará los cambios en busca de claves de API, tokens y contraseñas.
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: '(^|/)(venv|resumenes|imagenes)/'
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: detect-private-key
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace

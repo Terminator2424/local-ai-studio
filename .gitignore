@@ -1,0 +1,40 @@
+# --- Entorno virtual y Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- Configuración local y secretos (usa config.example.yaml como plantilla)
+config.yaml
+.env
+.env.*
+*.pem
+*.key
+
+# --- Logs, resultados y datos de usuario (pueden contener contenido de tus documentos)
+*.log
+resumenes/
+imagenes/
+conversations/
+outputs/
+workspace/
+models/
+logs/
+*.db
+*.sqlite
+*.safetensors
+*.pdf
+
+# --- Editor / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Pruebas locales sueltas
+test_ollama.py
+
+# Prompt personal para la siguiente sesión (no va al repo)
+PROMPT_SIGUIENTE_SESION.md

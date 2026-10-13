@@ -1,0 +1,40 @@
+# Local AI Studio: dependencias por secciones. Las versiones exactas probadas están en requirements-lock.txt.
+
+# --- Núcleo (PDF, chat, documentos, estudiar)
+ollama
+pymupdf
+pdfplumber
+pypdf
+pyyaml
+pillow
+numpy
+sympy                # verificación simbólica de fórmulas
+markdown-it-py
+python-docx          # exportación a Word
+huggingface_hub      # solo para las descargas de modelos de imágenes que confirmas
+tqdm
+rich
+
+# --- Interfaz
+customtkinter
+tkinterdnd2          # arrastrar y soltar (opcional)
+tkinterweb           # visor HTML del resumen y del chat
+matplotlib           # fórmulas LaTeX como imágenes (mathtext)
+
+# --- Hardware (detección de GPU/VRAM)
+nvidia-ml-py         # importa como «pynvml»
+
+# --- Imágenes (opcional). PyTorch con CUDA NO sale de PyPI estándar; instálalo antes con:
+#       pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+torch
+torchvision
+diffusers
+transformers
+accelerate
+safetensors
+
+# --- Seguridad y desarrollo
+pre-commit
+detect-secrets
+bandit
+pip-audit
