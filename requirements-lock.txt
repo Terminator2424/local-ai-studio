@@ -1,7 +1,7 @@
 # Entorno EXACTO con el que se probó Local AI Studio (pip freeze, Python 3.12, Windows 11). Solo de referencia:
 # para instalar usa requirements.txt. torch viene de https://download.pytorch.org/whl/cu128 (build +cu128).
 accelerate==1.15.0
-albucore==0.0.23
+albucore==0.2.21
 albumentations==1.4.24
 altgraph==0.17.5
 annotated-doc==0.0.5
