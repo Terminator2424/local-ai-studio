@@ -5,14 +5,16 @@ Las comprobaciones lentas (importar torch, listar modelos) corren en un hilo; la
 from __future__ import annotations
 
 import logging
+import os
 import queue
 import threading
 from tkinter import messagebox
 
 import customtkinter as ctk
 
-from ..chat.engine import CHAT_MODELS, ChatEngine
+from ..chat.engine import MODEL_INFO, ChatEngine, model_detail, model_label
 from ..core import hardware_detector as hw
+from ..core import storage
 from ..images import models as mdl
 from .theme import BORDER, ERR, OK, SURFACE, TEXT, WARN, ghost_button, label
 
@@ -105,6 +107,13 @@ class SettingsPage(ctk.CTkFrame):
         self.img_rows = ctk.CTkFrame(self.img_card, fg_color="transparent")
         self.img_rows.pack(fill="x", padx=16, pady=(0, 12))
 
+        self.disk_card = self._card("Almacenamiento")
+        self.disk_rows = ctk.CTkFrame(self.disk_card, fg_color="transparent")
+        self.disk_rows.pack(fill="x", padx=16, pady=(0, 6))
+        label(self.disk_card, "Solo se pueden limpiar la caché y las páginas renderizadas: se vuelven a crear solas. "
+              "Tus resúmenes, chats, documentos e imágenes nunca se borran desde aquí.", 11, muted=True, wraplength=900,
+              justify="left").pack(anchor="w", padx=16, pady=(0, 12))
+
     # ------------------------------------------------------------ refrescar
     def refresh(self):
         threading.Thread(target=self._gather, daemon=True).start()
@@ -115,7 +124,7 @@ class SettingsPage(ctk.CTkFrame):
             installed = self.engine.installed()
             running = self.manager.running_llms()
             data = {"info": info, "installed": installed, "running": running,
-                    "cfg": hw.describe(self.cfg)}
+                    "cfg": hw.describe(self.cfg), "storage": storage.usage()}
         except Exception as exc:  # noqa: BLE001
             data = {"error": str(exc)}
         self.q.put(("data", data))
@@ -171,14 +180,16 @@ class SettingsPage(ctk.CTkFrame):
                                       "Modelos Ollama: " + ", ".join(sorted(d["installed"]))])
         for w in self.llm_rows.winfo_children():
             w.destroy()
-        for name, note in {**CHAT_MODELS, **EXTRA_MODELS}.items():
+        for name in (*MODEL_INFO, *EXTRA_MODELS):
             row = ctk.CTkFrame(self.llm_rows, fg_color="transparent")
-            row.pack(fill="x", pady=2)
+            row.pack(fill="x", pady=3)
             have = any(m == name or m == name + ":latest" for m in d["installed"])
-            label(row, ("✔ " if have else "○ ") + name, 13, "bold" if have else "normal").pack(side="left")
-            label(row, "  " + note, 12, muted=True).pack(side="left")
+            head = model_label(name) if name in MODEL_INFO else name
+            label(row, ("✔ " if have else "○ ") + head, 13, "bold" if have else "normal").pack(anchor="w")
+            label(row, "     " + (model_detail(name) or EXTRA_MODELS.get(name, "")), 11, muted=True, wraplength=760,
+                  justify="left").pack(anchor="w")
             if not have:
-                ghost_button(row, "Descargar…", lambda n=name: self._pull(n), width=100, height=26).pack(side="right")
+                ghost_button(row, "Descargar…", lambda n=name: self._pull(n), width=100, height=26).place(relx=1.0, rely=0.0, anchor="ne")
         for w in self.img_rows.winfo_children():
             w.destroy()
         for m in mdl.CATALOG.values():
@@ -192,7 +203,39 @@ class SettingsPage(ctk.CTkFrame):
             else:
                 label(row, "descárgalo desde «Generar imagen»", 12, muted=True).pack(side="right")
 
+        self._show_storage(d["storage"])
+
+    def _show_storage(self, rows):
+        for w in self.disk_rows.winfo_children():
+            w.destroy()
+        for area, size in rows:
+            row = ctk.CTkFrame(self.disk_rows, fg_color="transparent")
+            row.pack(fill="x", pady=3)
+            label(row, f"{area.title}: {storage.human(size)}", 13, "bold").pack(anchor="w")
+            label(row, area.note, 11, muted=True, wraplength=640, justify="left").pack(anchor="w")
+            bar = ctk.CTkFrame(row, fg_color="transparent")
+            bar.place(relx=1.0, rely=0.0, anchor="ne")
+            if area.clearable and size:
+                ghost_button(bar, "Limpiar", lambda a=area, s=size: self._clear(a, s), width=80, height=26).pack(side="left", padx=(0, 6))
+            ghost_button(bar, "Abrir carpeta", lambda a=area: self._open_folder(a), width=110, height=26).pack(side="left")
+
     # ------------------------------------------------------------- acciones
+    def _clear(self, area, size: int):
+        if not messagebox.askyesno("Limpiar", f"Se borrarán los {storage.human(size)} de «{area.title}».\n\n"
+                                   "Son datos temporales: se volverán a crear cuando hagan falta.\n\n¿Limpiar?"):
+            return
+
+        def work():
+            freed = storage.clear(area.key)
+            self.q.put(("pull", f"✔ {area.title}: {storage.human(freed)} liberados"))
+            self.refresh()
+        threading.Thread(target=work, daemon=True).start()
+
+    @staticmethod
+    def _open_folder(area):
+        area.path.mkdir(parents=True, exist_ok=True)
+        os.startfile(str(area.path))                # noqa: S606  (carpeta fija de la aplicación, no entrada del usuario)
+
     def _pull(self, name: str):
         if self.pulling:
             return

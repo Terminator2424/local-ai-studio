@@ -34,6 +34,7 @@ class DocsPage(ctk.CTkFrame):
         self.cancel = threading.Event()
         self.working = False
         self.mode: str | None = None            # "index" | "ask" mientras hay trabajo en curso
+        self.selected: dict[int, ctk.BooleanVar] = {}      # documentos marcados para preguntar (por id)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
         self._build_left()
@@ -66,8 +67,12 @@ class DocsPage(ctk.CTkFrame):
         row.grid(row=1, column=0, sticky="ew")
         primary_button(row, "Indexar PDFs…", self._add_files, width=130, height=34).pack(side="left")
         ghost_button(row, "Carpeta…", self._add_folder, width=90, height=34).pack(side="left", padx=6)
-        self.emb_lbl = label(left, "", 11, muted=True, wraplength=270, justify="left")
-        self.emb_lbl.grid(row=2, column=0, sticky="w", pady=(8, 4))
+        info = ctk.CTkFrame(left, fg_color="transparent")
+        info.grid(row=2, column=0, sticky="ew", pady=(8, 4))
+        self.emb_lbl = label(info, "", 11, muted=True, wraplength=270, justify="left")
+        self.emb_lbl.pack(anchor="w")
+        self.scope_lbl = label(info, "", 11, muted=True, wraplength=270, justify="left")
+        self.scope_lbl.pack(anchor="w")
         self.listbox = ctk.CTkScrollableFrame(left, fg_color="transparent", scrollbar_button_color=BORDER, width=262)
         self.listbox.grid(row=3, column=0, sticky="nsew")
         self.prog = ctk.CTkProgressBar(left, height=5, progress_color=ACCENT, fg_color=BORDER)
@@ -118,17 +123,31 @@ class DocsPage(ctk.CTkFrame):
         for w in self.listbox.winfo_children():
             w.destroy()
         rows = self.index.docs()
+        self.selected = {i: v for i, v in self.selected.items() if i in {r["id"] for r in rows}}
         for r in rows:
             f = ctk.CTkFrame(self.listbox, fg_color=SURFACE, corner_radius=8)
             f.pack(fill="x", pady=2)
-            name = r["name"] if len(r["name"]) < 30 else r["name"][:29] + "…"
-            label(f, name, 12, "bold").pack(anchor="w", padx=10, pady=(6, 0))
+            name = r["name"] if len(r["name"]) < 26 else r["name"][:25] + "…"
+            var = self.selected.setdefault(r["id"], ctk.BooleanVar(value=True))
+            ctk.CTkCheckBox(f, text=name, variable=var, command=self._update_scope, checkbox_width=18, checkbox_height=18,
+                            fg_color=ACCENT, hover_color=ACCENT, border_color=BORDER, text_color=TEXT,
+                            font=font(12, "bold")).pack(anchor="w", padx=10, pady=(6, 0))
             warn = f" · {r['empty_pages']} págs. sin texto" if r["empty_pages"] else ""
-            label(f, f"{r['pages']} págs. · {r['chunks']} fragmentos{warn}", 11, muted=True).pack(anchor="w", padx=10, pady=(0, 6))
+            label(f, f"{r['pages']} págs. · {r['chunks']} fragmentos{warn}", 11, muted=True).pack(anchor="w", padx=36, pady=(0, 6))
             ctk.CTkButton(f, text="×", width=22, height=22, fg_color="transparent", hover_color=BORDER, text_color=MUTED,
                           command=lambda i=r["id"]: self._remove(i)).place(relx=1.0, x=-6, y=4, anchor="ne")
+        self._update_scope()
         self.emb_lbl.configure(text="Comprobando el modelo de búsqueda…", text_color=MUTED)
         threading.Thread(target=self._check_embeddings, daemon=True).start()     # Ollama puede tardar: no bloquea la ventana
+
+    def _selected_ids(self) -> list[int]:
+        return [i for i, v in self.selected.items() if v.get()]
+
+    def _update_scope(self):
+        total, chosen = len(self.selected), len(self._selected_ids())
+        self.scope_lbl.configure(text="" if not total else
+                                 ("Se pregunta a todos los documentos." if chosen == total else
+                                  f"Se pregunta solo a {chosen} de {total} documentos."))
 
     def _check_embeddings(self):
         names = self.engine.installed()
@@ -206,6 +225,11 @@ class DocsPage(ctk.CTkFrame):
         if not self.index.docs():
             messagebox.showinfo("Sin documentos", "Primero indexa algún PDF.")
             return
+        ids = self._selected_ids()
+        if not ids:
+            messagebox.showinfo("Ningún documento marcado", "Marca al menos un documento de la lista para preguntarle.")
+            return
+        scope = None if len(ids) == len(self.selected) else ids          # None = todos
         self.working = True
         self.mode = "ask"
         self.cancel.clear()
@@ -213,12 +237,12 @@ class DocsPage(ctk.CTkFrame):
         self.status.configure(text="Buscando en tus documentos…")
         self.prog.configure(mode="indeterminate")
         self.prog.start()
-        threading.Thread(target=self._ask_worker, args=(q, self.model_var.get()), daemon=True).start()
+        threading.Thread(target=self._ask_worker, args=(q, self.model_var.get(), scope), daemon=True).start()
 
-    def _ask_worker(self, question: str, model: str):
+    def _ask_worker(self, question: str, model: str, doc_ids: list[int] | None = None):
         try:
             self.app.manager.use_llm(model)
-            hits = self.index.search(question, k=6)
+            hits = self.index.search(question, k=6, doc_ids=doc_ids)
             if not hits:
                 self.q.put(("answer", f"{ask.NOT_FOUND}\n\n_No hay fragmentos que se parezcan a la pregunta._"))
                 return

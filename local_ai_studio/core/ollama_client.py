@@ -6,6 +6,7 @@ aplicación fija OLLAMA_HOST=127.0.0.1 en su propio proceso y se niega a hablar 
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import subprocess
@@ -55,6 +56,17 @@ def get_client(cfg: dict):
         if host not in _CLIENTS:
             _CLIENTS[host] = ollama.Client(host=host)
         return _CLIENTS[host]
+
+
+def close_clients() -> None:
+    """Cierra las conexiones abiertas (al salir de la aplicación)."""
+    with _CLIENTS_LOCK:
+        for client in _CLIENTS.values():
+            http = getattr(client, "_client", None)
+            if http is not None:
+                with contextlib.suppress(Exception):
+                    http.close()
+        _CLIENTS.clear()
 
 
 def check_ollama(cfg: dict, need_vision: bool = True) -> None:

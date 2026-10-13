@@ -269,7 +269,7 @@ def describe(cfg: dict) -> str:
     lines.append(f"RAM: {i['ram_gb']:.0f} GB")
     a = hw.get("applied")
     if a:
-        lines.append(f"Modelo: {a['text_model']}")
+        lines.append(f"Modelo para resumir PDF: {a['text_model']}")
         lines.append(f"num_ctx: {a['text_num_ctx']} · num_gpu: {'auto' if a['text_num_gpu'] is None else a['text_num_gpu']}")
     for r in hw.get("reasons", []):
         lines.append(f"• {r}")

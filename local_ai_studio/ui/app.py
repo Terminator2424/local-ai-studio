@@ -7,13 +7,16 @@ from __future__ import annotations
 
 import importlib
 import logging
+import threading
 from tkinter import messagebox
 
 import customtkinter as ctk
 
-from ..core import hardware_detector, netguard
-from ..core.model_manager import get_manager
+from ..core import hardware_detector, netguard, storage
 from ..core.config import load_config
+from ..core.logsetup import setup_logging
+from ..core.model_manager import get_manager
+from ..core.ollama_client import close_clients
 from . import theme
 from .theme import ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, font
 
@@ -48,6 +51,7 @@ PAGES = {
 class StudioApp(_Base):
     def __init__(self):
         super().__init__()
+        setup_logging()
         netguard.install()          # nada de lo que ejecute esta ventana puede salir del equipo
         self.cfg = load_config()
         self.manager = get_manager(self.cfg)
@@ -81,6 +85,7 @@ class StudioApp(_Base):
         self._setup_dnd()
         self.show("pdf")
         self.after(500, self._tick_status)
+        threading.Thread(target=storage.auto_prune, daemon=True).start()      # mantiene la caché por debajo de su tope
 
     # ----------------------------------------------------------------- menú
     def _build_sidebar(self):
@@ -198,6 +203,7 @@ class StudioApp(_Base):
         for p in self.pages.values():
             if hasattr(p, "shutdown"):
                 p.shutdown()
+        close_clients()
         self.destroy()
 
 

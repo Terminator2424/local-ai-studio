@@ -13,6 +13,7 @@ from typing import Any
 
 from ..core.errors import Cancelled
 from ..core.ollama_client import get_client
+from .roles import DEFAULT_ROLE, ROLES
 from .store import DEFAULT_MODEL, Message  # noqa: F401  (DEFAULT_MODEL se reexporta para la interfaz)
 
 log = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ def model_detail(model: str) -> str:
     return info[2] if info else ""
 EXTRA_PULLS = {"nomic-embed-text"}
 ALLOWED_PULLS = set(CHAT_MODELS) | EXTRA_PULLS     # lista cerrada: ningún texto externo puede añadir modelos
-DEFAULT_SYSTEM = "Eres un asistente útil y conciso. Responde en el idioma del usuario. Si no estás seguro de un dato, dilo."
+DEFAULT_SYSTEM = ROLES[DEFAULT_ROLE][1]
 
 
 def is_vision(model: str) -> bool:

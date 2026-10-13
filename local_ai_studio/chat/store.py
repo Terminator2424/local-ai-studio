@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..core.paths import BASE_DIR
+from .roles import DEFAULT_ROLE, ROLES
 
 log = logging.getLogger(__name__)
 
@@ -160,8 +161,7 @@ DEFAULT_MODEL = "llama3.1:8b"
 PREFS_VERSION = 2       # v2: el modelo predeterminado pasó a llama3.1:8b (las preferencias antiguas se actualizan una vez)
 DEFAULT_PREFS = {"prefs_version": PREFS_VERSION, "model": DEFAULT_MODEL, "temperature": 0.7, "top_p": 0.9,
                  "max_tokens": 1024, "num_ctx": 8192, "read_roots": [],
-                 "system_prompt": "Eres un asistente útil y conciso. Responde en el idioma del usuario. "
-                                  "Si no estás seguro de un dato, dilo."}
+                 "system_prompt": ROLES[DEFAULT_ROLE][1]}
 
 
 def load_prefs(path: Path = PREFS_PATH) -> dict:

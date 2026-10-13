@@ -16,7 +16,7 @@ from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
-from ..chat import render
+from ..chat import render, roles
 from ..agent.loop import Agent
 from ..agent.policy import WORKSPACE, Policy, ToolDenied, validate_new_root
 from ..chat.engine import CHAT_MODELS, DEFAULT_MODEL, TOOL_MODELS, ChatEngine, Params, Reply, build_messages, est_tokens, is_vision
@@ -25,7 +25,7 @@ from ..core.errors import Cancelled
 from ..core.textutil import safe_name
 from . import confirm_dialog
 from .model_picker import ModelPicker
-from .theme import (ACCENT, BORDER, FONT, LOG_COLORS, MUTED, SURFACE, TEXT, font, ghost_button, label,
+from .theme import (ACCENT, BORDER, FONT, LOG_COLORS, MUTED, SURFACE, TEXT, font, ghost_button, label, option_menu,
                     primary_button, slider)
 
 try:
@@ -166,20 +166,21 @@ class ChatPage(ctk.CTkFrame):
 
         head = ctk.CTkFrame(main, fg_color="transparent")
         head.grid(row=0, column=0, sticky="ew")
-        head.grid_columnconfigure(1, weight=1)
-        self.picker = ModelPicker(head, list(CHAT_MODELS), self.prefs["model"], self._on_model, width=320, wrap=420)
+        head.grid_columnconfigure(2, weight=1)
+        self.picker = ModelPicker(head, list(CHAT_MODELS), self.prefs["model"], self._on_model, width=250, wrap=250)
         self.picker.grid(row=0, column=0, sticky="nw")
         self.model_var = self.picker.var            # mismo get()/set() que una StringVar, pero con el id del modelo
-        actions = ctk.CTkFrame(head, fg_color="transparent")        # dos filas: caben aunque la ventana sea estrecha
-        actions.grid(row=0, column=2, sticky="ne")
-        ghost_button(actions, "Regenerar", self._regenerate, width=104, height=30).grid(row=0, column=0, padx=(0, 6), pady=(2, 4))
-        ghost_button(actions, "Exportar .md", self._export, width=116, height=30).grid(row=0, column=1, pady=(2, 4))
+        self.role_var = ctk.StringVar(value=roles.DEFAULT_ROLE)
+        self.role_menu = option_menu(head, roles.role_names(), self.role_var, self._on_role, width=165)
+        self.role_menu.grid(row=0, column=1, sticky="nw", padx=(10, 0))
+        actions = ctk.CTkFrame(head, fg_color="transparent")
+        actions.grid(row=0, column=3, sticky="ne")
         self.tools_var = ctk.BooleanVar(value=False)
         ctk.CTkSwitch(actions, text="Herramientas", variable=self.tools_var, command=self._on_tools, progress_color=ACCENT,
-                      font=font(12), text_color=TEXT, width=104).grid(row=1, column=0, sticky="w", padx=(2, 6))
-        self.params_btn = ctk.CTkButton(actions, text="Parámetros  ▸", width=116, height=30, fg_color="transparent", hover_color=SURFACE,
+                      font=font(12), text_color=TEXT, width=100).pack(side="left", padx=(0, 6), pady=(4, 0))
+        self.params_btn = ctk.CTkButton(actions, text="Parámetros  ▸", width=100, height=30, fg_color="transparent", hover_color=SURFACE,
                                         text_color=MUTED, font=font(12), command=self._toggle_params)
-        self.params_btn.grid(row=1, column=1)
+        self.params_btn.pack(side="left")
         self.tools_bar = ctk.CTkFrame(head, fg_color=SURFACE, corner_radius=8)
         self.tools_lbl = ctk.CTkLabel(self.tools_bar, text="", justify="left", anchor="w", font=font(11), text_color=MUTED)
         self.tools_lbl.pack(side="left", padx=10, pady=6)
@@ -231,6 +232,10 @@ class ChatPage(ctk.CTkFrame):
         self.log_btn = ctk.CTkButton(main, text="Registro  ▸", anchor="w", height=24, fg_color="transparent", hover_color=SURFACE,
                                      text_color=MUTED, font=font(12), command=self._toggle_log)
         self.log_btn.grid(row=6, column=0, sticky="w", pady=(4, 0))
+        bottom = ctk.CTkFrame(main, fg_color="transparent")
+        bottom.grid(row=6, column=0, sticky="e", pady=(4, 0))
+        ghost_button(bottom, "Regenerar", self._regenerate, width=100, height=26).pack(side="left", padx=(0, 6))
+        ghost_button(bottom, "Exportar .md", self._export, width=110, height=26).pack(side="left")
         self.log_box = ctk.CTkTextbox(main, height=110, fg_color=SURFACE, corner_radius=8, text_color=TEXT, border_width=1,
                                       border_color=BORDER, font=ctk.CTkFont("Consolas", 11), state="disabled", wrap="word")
         self.on_theme()
@@ -261,7 +266,10 @@ class ChatPage(ctk.CTkFrame):
         label(box, "System prompt", 12).grid(row=2, column=0, padx=(14, 8), pady=(6, 2), sticky="nw")
         self.system_box = ctk.CTkTextbox(box, height=58, wrap="word", fg_color=BORDER, text_color=TEXT, border_width=0,
                                          font=font(12))
-        self.system_box.grid(row=2, column=1, columnspan=4, sticky="ew", padx=(0, 14), pady=(6, 12))
+        self.system_box.grid(row=2, column=1, columnspan=4, sticky="ew", padx=(0, 14), pady=(6, 2))
+        self.role_note = label(box, "", 11, muted=True, anchor="w")
+        self.role_note.grid(row=3, column=1, columnspan=4, sticky="w", pady=(0, 10))
+        self.system_box.bind("<KeyRelease>", lambda _: self._sync_role())
         self._set_system(self.prefs["system_prompt"])
         self._upd_lbl()
 
@@ -272,6 +280,21 @@ class ChatPage(ctk.CTkFrame):
     def _set_system(self, text: str):
         self.system_box.delete("1.0", "end")
         self.system_box.insert("1.0", text)
+        self._sync_role()
+
+    def _sync_role(self):
+        """El combo de rol refleja el texto: si coincide con un rol lo muestra; si se editó, «Personalizado»."""
+        role = roles.role_for(self.system_box.get("1.0", "end"))
+        self.role_var.set(role)
+        self.role_note.configure(text=roles.describe(role))
+
+    def _on_role(self, role: str):
+        prompt = roles.prompt_for(role)
+        if prompt is not None:                      # «Personalizado» no cambia el texto: solo deja editarlo
+            self._set_system(prompt)
+        else:
+            self.role_note.configure(text=roles.describe(role))
+            self.system_box.focus_set()
 
     def _toggle_params(self):
         self.params_open = not self.params_open
@@ -534,7 +557,7 @@ class ChatPage(ctk.CTkFrame):
             if self.model_var.get() not in TOOL_MODELS:
                 self.model_var.set(DEFAULT_MODEL)
                 self._on_model(DEFAULT_MODEL)
-            self.tools_bar.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(8, 0))
+            self.tools_bar.grid(row=1, column=0, columnspan=4, sticky="ew", pady=(8, 0))
             self._refresh_tools_label()
         else:
             self.tools_bar.grid_forget()
