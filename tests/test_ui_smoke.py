@@ -53,6 +53,18 @@ app.end_job("Resumir PDF")
 assert app.begin_job("Generar imagen") is True
 app.end_job("Generar imagen")
 assert app.manager.current_job is None
+# primer arranque: si falta algo imprescindible avisa con el comando exacto y abre Ajustes
+import local_ai_studio.ui.app as app_module
+from local_ai_studio.firstrun import Step
+app.show("pdf")
+original = app_module.check_setup
+app_module.check_setup = lambda cfg, **k: [Step("Modelo de chat", False, "ninguno instalado", "En una terminal: ollama pull llama3.1:8b", True)]
+avisos.clear(); app._first_run_check()
+assert avisos and "ollama pull llama3.1:8b" in avisos[-1][1] and app.active == "settings", (avisos, app.active)
+app_module.check_setup = lambda cfg, **k: [Step("Ollama", True, "responde", essential=True)]
+avisos.clear(); app.show("pdf"); app._first_run_check()
+assert not avisos and app.active == "pdf", "sin carencias no debe molestar"
+app_module.check_setup = original
 app._toggle_dark(); app.update(); app._toggle_dark(); app.update()
 app.destroy()
 print("OK", len(PAGES))
@@ -62,7 +74,7 @@ print("OK", len(PAGES))
 class TestInterfaz(unittest.TestCase):
     def test_se_abren_todas_las_paginas_sin_errores(self):
         with tempfile.TemporaryDirectory() as home:
-            env = {**os.environ, "LOCAL_AI_STUDIO_HOME": home, "PYTHONIOENCODING": "utf-8"}
+            env = {**os.environ, "LOCAL_AI_STUDIO_HOME": home, "PYTHONIOENCODING": "utf-8", "LOCAL_AI_STUDIO_SKIP_FIRSTRUN": "1"}
             r = subprocess.run([sys.executable, "-c", SCRIPT, str(ROOT)], env=env, capture_output=True, text=True,
                                timeout=180, check=False, encoding="utf-8", errors="replace")
             if r.returncode == 3 and "NO_DISPLAY" in r.stdout:

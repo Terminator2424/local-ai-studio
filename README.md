@@ -10,6 +10,10 @@ Pensado para una GPU de 8 GB (RTX 4060) y 16 GB de RAM, pero se adapta al hardwa
 modo oscuro opcional, acento rojo.
 
 <p align="center">
+  <img src="docs/img/demo.gif" width="92%" alt="Demostración: resumir un PDF y preguntarle con la página citada">
+</p>
+
+<p align="center">
   <img src="docs/img/documentos.png" width="49%" alt="Documentos: respuesta con la página citada">
   <img src="docs/img/chat.png" width="49%" alt="Chat con selector de modelo y rol">
 </p>
@@ -31,7 +35,8 @@ El inventario completo, con límites, está en **[docs/CAPACIDADES.md](docs/CAPA
 ## Inicio rápido (Windows 10/11)
 
 1. Instala [Ollama](https://ollama.com) y [Python 3.12](https://www.python.org).
-2. Crea el entorno e instala las dependencias:
+2. **Doble clic en `instalar.bat`**: crea el entorno, instala las dependencias y al final ejecuta un diagnóstico que te dice
+   qué falta (Ollama, modelos, GPU) y el comando exacto para arreglarlo. O a mano:
    ```bash
    python -m venv venv
    venv\Scripts\python.exe -m pip install -r requirements.txt
@@ -83,7 +88,7 @@ código se verifican con código. Lo que no se puede comprobar sale con ⚠ y di
 python -m pip install -r requirements-dev.txt
 python -m ruff check .                                   # 0 errores
 python -m mypy local_ai_studio                           # 0 errores
-python -m unittest discover -s tests                     # 330 pruebas, sin Ollama ni GPU
+python -m unittest discover -s tests                     # 352 pruebas, sin Ollama ni GPU
 python -m bandit -r local_ai_studio app.py -ll           # 0 hallazgos
 ```
 La integración continua (GitHub Actions) ejecuta lo mismo en cada cambio. La capa de lógica tiene un 81 % de cobertura; la interfaz
@@ -93,7 +98,8 @@ se prueba abriendo la ventana real en un proceso aparte con datos temporales.
 
 ```
 app.py                       punto de entrada (equivale a python -m local_ai_studio)
-run.bat · build_exe.bat      lanzador con doble clic · empaquetado .exe (PyInstaller)
+instalar.bat · run.bat       instalación con doble clic · lanzador
+check.bat · build_exe.bat    todas las comprobaciones de calidad · empaquetado .exe
 config.example.yaml          plantilla de configuración y prompts (config.yaml es local)
 local_ai_studio/
   core/    rutas, configuración, cliente de Ollama, barrera de red, VRAM, almacenamiento, visor Markdown, exportación
@@ -104,7 +110,7 @@ local_ai_studio/
   study/   tarjetas y verificación de pasos
   images/  catálogo y descarga verificada, generación (diffusers), edición (Pillow)
   ui/      ventana principal y páginas (CustomTkinter)
-tests/                       330 pruebas
+tests/                       352 pruebas
 docs/                        capacidades, arquitectura y auditoría
 ```
 Datos de usuario (fuera de git): `config.yaml`, `resumenes/`, `imagenes/`, `conversations/`, `outputs/`, `models/`, `workspace/`, `logs/`.

@@ -41,10 +41,9 @@ def missing_dependencies() -> tuple[list[str], list[str]]:
 
 def doctor() -> int:
     """Diagnóstico por consola: dependencias, hardware, Ollama y modelos."""
-    from .chat.engine import MODEL_INFO
     from .core.config import load_config
     from .core.hardware_detector import describe
-    from .core.ollama_client import get_client
+    from .firstrun import check_setup, essentials_missing, format_steps
 
     print(f"Local AI Studio {__version__} · Python {sys.version.split()[0]}\n")
     required, optional = missing_dependencies()
@@ -52,15 +51,16 @@ def doctor() -> int:
     print("Dependencias opcionales:", "todas instaladas" if not optional else "faltan " + ", ".join(optional))
     cfg = load_config()
     print("\n" + describe(cfg))
-    try:
-        names = {m.model for m in get_client(cfg).list().models}
-    except Exception as exc:  # noqa: BLE001  (cualquier fallo significa «Ollama no responde»)
-        print(f"\nOllama: NO RESPONDE ({type(exc).__name__}). Abre la aplicación Ollama.")
-        return 1
-    print(f"\nOllama: responde · {len(names)} modelo(s) instalado(s)")
-    for model in MODEL_INFO:
-        print(f"  {'✔' if model in names else '·'} {model}")
-    return 0 if not required else 1
+    torch = None
+    if importlib.util.find_spec("torch") is not None:
+        try:
+            import torch as _torch
+            torch = {"version": _torch.__version__, "cuda": _torch.cuda.is_available()}
+        except Exception as exc:  # noqa: BLE001  (un PyTorch roto no debe impedir el diagnóstico)
+            torch = {"error": str(exc)}
+    steps = check_setup(cfg, torch=torch)
+    print("\nPrimeros pasos:\n" + format_steps(steps))
+    return 1 if (required or essentials_missing(steps)) else 0
 
 
 def main(argv: list[str] | None = None) -> int:

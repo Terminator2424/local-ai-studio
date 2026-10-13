@@ -78,6 +78,28 @@ def check_answer(answer: str, hits: list[Hit]) -> Checked:
     return Checked(text, [c for c in cited if c not in bad], bad, unsupported)
 
 
+def excerpt(text: str, answer: str, width: int = 220) -> str:
+    """Trozo de `text` (≈ `width` caracteres) centrado en lo que respalda la respuesta: la primera cifra de la respuesta que
+    aparece en el fragmento. Si ninguna aparece, el principio. Así la cita literal enseña la frase que responde, no la cabecera."""
+    flat = " ".join(text.split())
+    if len(flat) <= width:
+        return flat
+    start = 0
+    for tok in _NUM.findall(_CITE.sub(" ", answer)):
+        m = re.search(r"(?<![\w.])" + re.escape(tok) + r"(?![\w])", flat)
+        if m:
+            start = max(0, m.start() - width // 3)
+            break
+    if start:
+        space = flat.find(" ", start)                      # empieza en una palabra entera
+        start = space + 1 if 0 <= space < start + 25 else start
+    end = start + width
+    if end < len(flat):
+        space = flat.rfind(" ", start, end)                # y acaba en una palabra entera
+        end = space if space > start else end
+    return ("…" if start else "") + flat[start:end].strip() + ("…" if end < len(flat) else "")
+
+
 def sources_markdown(hits: list[Hit], cited: list[int]) -> str:
     rows = [f"- **[{i}]** {h.doc} · p. {h.page}" for i, h in enumerate(hits, 1) if not cited or i in cited]
     return "**Fuentes**\n" + "\n".join(rows) if rows else ""

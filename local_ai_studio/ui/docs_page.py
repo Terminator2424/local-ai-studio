@@ -266,7 +266,7 @@ class DocsPage(ctk.CTkFrame):
             reply = self.engine.stream(model, ask.build_messages(question, hits), Params(0.2, 0.9, 700, 8192), self.cancel)
             checked = ask.check_answer(reply.text, hits)
             src = ask.sources_markdown(hits, checked.cited)
-            quotes = "\n".join(f"> **[{i}] p. {h.page}:** {h.text.strip()[:220].replace(chr(10), ' ')}…" for i, h in enumerate(hits, 1)
+            quotes = "\n".join(f"> **[{i}] p. {h.page}:** {ask.excerpt(h.text, checked.text)}" for i, h in enumerate(hits, 1)
                                if i in checked.cited)
             self.q.put(("answer", f"{checked.text}\n\n{src}\n\n{quotes}"))
         except Cancelled:

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib
 import logging
+import os
 import threading
 from tkinter import messagebox
 
@@ -17,6 +18,7 @@ from ..core.config import load_config
 from ..core.logsetup import setup_logging
 from ..core.model_manager import get_manager
 from ..core.ollama_client import close_clients
+from ..firstrun import check_setup, essentials_missing
 from . import theme
 from .theme import ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, font
 
@@ -85,6 +87,8 @@ class StudioApp(_Base):
         self._setup_dnd()
         self.show("pdf")
         self.after(500, self._tick_status)
+        if not os.environ.get("LOCAL_AI_STUDIO_SKIP_FIRSTRUN"):        # las pruebas automáticas lo desactivan (no hay Ollama en la CI)
+            self.after(1800, self._first_run_check)
         threading.Thread(target=storage.auto_prune, daemon=True).start()      # mantiene la caché por debajo de su tope
 
     # ----------------------------------------------------------------- menú
@@ -115,6 +119,19 @@ class StudioApp(_Base):
 
     def _on_manager_state(self, state: str):
         self._state_text = state            # se muestra en el siguiente ciclo del hilo principal (no se toca Tk desde otro hilo)
+
+    def _first_run_check(self) -> None:
+        """Si falta algo imprescindible (Ollama o un modelo de chat), lo dice una vez y abre Ajustes con las instrucciones."""
+        try:
+            missing = essentials_missing(check_setup(self.cfg))
+        except Exception:
+            log.exception("No se pudo comprobar el primer arranque")
+            return
+        if not missing:
+            return
+        text = "\n\n".join(f"• {s.title}: {s.detail}\n   {s.fix}" for s in missing)
+        messagebox.showinfo("Faltan cosas para empezar", f"{text}\n\nTe lo dejo explicado en Ajustes → Primeros pasos.")
+        self.show("settings")
 
     def job_busy(self) -> bool:
         """¿Hay un trabajo pesado en curso? Si lo hay, avisa al usuario (para comprobarlo antes de guardar nada)."""

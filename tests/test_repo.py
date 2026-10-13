@@ -67,10 +67,17 @@ class TestProyecto(unittest.TestCase):
 
     def test_los_scripts_bat_no_activan_el_entorno_virtual(self):
         """`activate.bat` guarda la ruta absoluta del entorno: al mover o renombrar la carpeta apunta a otro Python."""
-        for name in ("run.bat", "build_exe.bat"):
+        for name in ("run.bat", "build_exe.bat", "instalar.bat", "check.bat"):
             text = (ROOT / name).read_text(encoding="utf-8")
             self.assertNotIn("call venv", text, name)       # «call venv\Scripts\activate.bat»
             self.assertIn("venv\\Scripts\\python.exe", text, name)
+
+    def test_los_bat_tienen_finales_de_linea_de_windows(self):
+        """Un .bat con finales LF puede fallar en etiquetas y bloques (goto, paréntesis): se exige CRLF."""
+        for name in ("run.bat", "build_exe.bat", "instalar.bat", "check.bat"):
+            data = (ROOT / name).read_bytes()
+            self.assertGreater(data.count(b"\r\n"), 5, name)
+            self.assertEqual(data.count(b"\n"), data.count(b"\r\n"), f"{name}: hay saltos de línea sin CR")
 
     def test_los_yaml_del_repositorio_son_validos(self):
         """Un YAML roto en .github/ hace que GitHub no arranque la CI ni diga por qué (0 trabajos): se valida aquí."""

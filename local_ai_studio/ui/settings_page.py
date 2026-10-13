@@ -15,6 +15,7 @@ import customtkinter as ctk
 from ..chat.engine import MODEL_INFO, ChatEngine, model_detail, model_label
 from ..core import hardware_detector as hw
 from ..core import netguard, storage
+from ..firstrun import check_setup, essentials_missing, format_steps
 from ..images import models as mdl
 from .theme import BORDER, ERR, OK, SURFACE, TEXT, WARN, ghost_button, label
 
@@ -80,6 +81,10 @@ class SettingsPage(ctk.CTkFrame):
         ghost_button(head, "Copiar informe", self._copy, width=130, height=30).pack(side="right")
         ghost_button(head, "Actualizar", self.refresh, width=100, height=30).pack(side="right", padx=8)
 
+        self.setup_card = self._card("Primeros pasos")
+        self.setup_lbl = label(self.setup_card, "Comprobando…", 13, justify="left", anchor="w", wraplength=900)
+        self.setup_lbl.pack(anchor="w", padx=16, pady=(0, 12), fill="x")
+
         self.hw_card = self._card("GPU y memoria")
         self.hw_lbl = label(self.hw_card, "Leyendo el hardware…", 13, justify="left", anchor="w", wraplength=900)
         self.hw_lbl.pack(anchor="w", padx=16, pady=(0, 12), fill="x")
@@ -132,7 +137,10 @@ class SettingsPage(ctk.CTkFrame):
         except Exception as exc:  # noqa: BLE001
             data = {"error": str(exc)}
         self.q.put(("data", data))
-        self.q.put(("torch", torch_report()))
+        report = torch_report()
+        self.q.put(("torch", report))
+        if "installed" in data:
+            self.q.put(("setup", check_setup(self.cfg, torch=report, installed=data["installed"])))
 
     def _poll(self):
         try:
@@ -144,7 +152,11 @@ class SettingsPage(ctk.CTkFrame):
 
     def _handle(self, msg):
         kind = msg[0]
-        if kind == "data":
+        if kind == "setup":
+            steps = msg[1]
+            missing = essentials_missing(steps)
+            self.setup_lbl.configure(text=format_steps(steps), text_color=ERR if missing else TEXT)
+        elif kind == "data":
             self._show_data(msg[1])
         elif kind == "torch":
             r = msg[1]

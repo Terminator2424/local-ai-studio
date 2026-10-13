@@ -100,6 +100,8 @@ tablas Markdown.
 - **Guardar** crea `.md`, **`.pdf`** (A4, con las fórmulas dibujadas) y **`.docx`** (Word, con tablas, listas y fórmulas como imagen).
 - **Copiar para IA** pone el Markdown en el portapapeles listo para pegarlo en cualquier modelo.
 - **Visor** con Markdown y LaTeX renderizado; modo seguro (sin imágenes ni enlaces externos).
+- **Historial de versiones**: si vuelves a resumir un PDF y el resultado cambia (aunque sea una sola cifra), el resumen anterior no
+  se pierde: pasa a `resumenes/historial/` con su fecha (se conservan las últimas 10 versiones de cada documento).
 
 ### 1.7 Caché y opciones
 Cada resultado se guarda por **hash del PDF + ajustes + versión del pipeline**: volver a resumir el mismo PDF es instantáneo, y
@@ -120,7 +122,9 @@ Indexa uno o muchos PDFs y pregúntales en lenguaje natural; cada respuesta **ci
 | Respuestas con citas | El modelo recibe fragmentos numerados `[1] p. 7…` y debe citarlos. La respuesta se muestra con las **fuentes** y una **cita literal** de cada fragmento usado. |
 | Comprobación automática | Se verifica que las **citas existan** y que las **cifras de la respuesta aparezcan** en los fragmentos; lo contrario se avisa con ⚠. Si no hay nada relevante, responde «no lo encuentro» en vez de inventar. |
 | Texto del documento = datos | Un PDF con «ignora lo anterior…» no puede dar órdenes: su texto se trata como contenido, no como instrucciones. |
-| Selector de modelo | Con descripción de cada modelo (ver §3). Por defecto, Llama 3.1 8B. |
+| Selector de modelo | Con descripción de cada modelo (ver §3). Por defecto, Llama 3.1 8B. **Recuerda el que elegiste** para esta tarea (y Estudiar recuerda el suyo). |
+| Varios documentos | Cada fragmento llega al modelo con su documento y página; si los datos vienen de varios, la respuesta debe decir de cuál sale cada uno y **avisar si se contradicen**. |
+| Cita literal | Debajo de la respuesta se muestra la frase del documento que la respalda (centrada en la cifra citada), no el principio de la página. |
 
 Detalles: fragmentos de ≈ 900 caracteres con solape de 120 y número de página; las consultas se limpian para que nadie pueda
 inyectar operadores en FTS5; el índice se escribe en una sola transacción (o se guarda el documento entero o nada).
@@ -204,7 +208,8 @@ Convierte un documento (o texto pegado) en material de estudio, **verificando co
 
 | Tarea | Resultado |
 |---|---|
-| **Tarjetas de estudio** | 6–12 tarjetas pregunta/respuesta; **exportar a CSV para Anki** (se neutralizan las fórmulas de hoja de cálculo para que un CSV no ejecute nada al abrirlo). |
+| **Tarjetas de estudio** | 6–12 tarjetas pregunta/respuesta; **exportar a Anki (archivo de importación directa, con las directivas `#separator` y `#html`), a Notion (CSV con encabezados 
+  Pregunta/Respuesta) o a Markdown**; se neutralizan las fórmulas de hoja de cálculo para que un CSV no ejecute nada al abrirlo. |
 | **Preguntas de práctica** | 5–8 preguntas de dificultad creciente, con las respuestas razonadas al final. |
 | **Resolver un ejercicio paso a paso** | Resolución desglosada; **cada igualdad se marca ✓ (verificada), ✗ (incorrecta) o ⚠ (no verificable)** con cálculo exacto, no con la opinión del modelo. |
 
@@ -259,6 +264,8 @@ Editor sencillo con **vista previa en vivo** (Pillow).
   renderizadas, registros), «Abrir carpeta» y **«Limpiar»** para lo que se puede regenerar (caché y páginas). Tus resúmenes, chats,
   documentos e imágenes **nunca** se borran desde aquí. Además, al arrancar la aplicación **poda en segundo plano** lo más antiguo
   de esas dos carpetas si superan 1 GB cada una.
+- **Primeros pasos**: una lista de comprobación con ✔ / ✖ / ○ (Ollama, modelo de chat, modelo de visión, búsqueda por sentido, PyTorch con
+  CUDA) y el comando exacto para arreglar lo que falte. Si falta algo imprescindible, la aplicación lo avisa al abrirse y lleva a esta tarjeta.
 - **Copiar informe** del diagnóstico (no contiene tus documentos).
 - **Modo oscuro**: interruptor en la barra lateral (se recuerda entre sesiones).
 
@@ -307,7 +314,7 @@ Detalle, modelo de amenazas, pruebas y **límites honestos** en [../SECURITY.md]
 
 ```bash
 python -m local_ai_studio            # abre la interfaz (o run.bat con doble clic)
-python -m local_ai_studio --doctor   # diagnóstico: dependencias, GPU, Ollama y modelos
+python -m local_ai_studio --doctor   # diagnóstico: dependencias, GPU, «Primeros pasos» (Ollama, modelos, CUDA)
 python -m local_ai_studio --version
 ```
 
@@ -319,6 +326,8 @@ python -m local_ai_studio --version
 - **Versión empaquetada (.exe)**: `build_exe.bat` genera `dist\LocalAIStudio\` con PyInstaller (≈ 270 MB). Sirve para PDF,
   documentos, chat, estudiar y editar imágenes. **No incluye PyTorch** (no genera imágenes) **ni el sandbox** de código. Sigue
   necesitando Ollama.
+- **Instalación**: `instalar.bat` (doble clic) crea el entorno, instala las dependencias y ejecuta `--doctor`; `check.bat` ejecuta ruff, mypy,
+  las pruebas y bandit.
 - **Pruebas y calidad**: `python -m unittest discover -s tests` (más de 300 pruebas, sin Ollama ni GPU), `ruff`, `mypy`, `bandit`,
   `pip-audit`, integración continua en GitHub Actions.
 

@@ -160,6 +160,28 @@ class TestRespuestas(unittest.TestCase):
         self.assertIn("[2] (a.pdf, p. 3)", m[1]["content"])
         self.assertTrue(m[1]["content"].endswith("PREGUNTA: ¿cuánto vale?"))
 
+    def test_la_cita_literal_se_centra_en_lo_que_respalda_la_respuesta(self):
+        relleno = "Texto de introducción sin relación con la pregunta. " * 8
+        texto = relleno + "La complejidad ciclomática del módulo de pagos es 14, por encima del umbral. " + relleno
+        cita = ask.excerpt(texto, "La complejidad es 14 [1].")
+        self.assertIn("es 14", cita)
+        self.assertTrue(cita.startswith("…") and cita.endswith("…"))      # recortado por los dos lados
+        self.assertLessEqual(len(cita), 230)
+        self.assertNotIn("  ", cita)
+
+    def test_la_cita_ignora_los_numeros_de_cita_y_cae_al_principio_si_no_hay_cifra(self):
+        texto = "Primera frase del documento. " + "relleno " * 80 + "Fin."
+        cita = ask.excerpt(texto, "Sí, según el documento [2].")           # el 2 es una marca de cita, no una cifra
+        self.assertTrue(cita.startswith("Primera frase"))
+        self.assertTrue(cita.endswith("…"))
+
+    def test_la_cita_de_un_texto_corto_va_entera_y_sin_saltos_de_linea(self):
+        self.assertEqual(ask.excerpt("Línea uno\n   línea dos", "x 5"), "Línea uno línea dos")
+
+    def test_la_cifra_debe_ser_una_palabra_entera(self):
+        texto = "Importe 1400 euros. " + "relleno " * 60 + "Total real: 14 unidades. " + "relleno " * 60
+        self.assertIn("Total real: 14", ask.excerpt(texto, "Son 14 [1]"))      # no se ancla en el «14» de «1400»
+
     def test_con_varios_documentos_cada_fragmento_lleva_su_documento_y_se_pide_senalar_contradicciones(self):
         hits = [Hit(1, 1, "informe_a.pdf", 4, "La cifra es 10.", 1.0), Hit(2, 2, "informe_b.pdf", 9, "La cifra es 12.", 0.9)]
         m = ask.build_messages("¿cuál es la cifra?", hits)
