@@ -43,3 +43,9 @@ PROMPT_SIGUIENTE_SESION.md
 build/
 dist/
 *.spec
+
+# --- Artefactos de calidad
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/

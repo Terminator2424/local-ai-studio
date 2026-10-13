@@ -45,8 +45,6 @@ LEVEL_HINTS = {
 }
 N_STEPS = 7
 STEP_ORDER = {"extract": 1, "vision": 2, "figures": 3, "map": 4, "verify": 5, "reduce": 6, "refine": 7}
-STEP_NAMES = {"extract": "Leyendo el PDF", "vision": "Leyendo fórmulas", "figures": "Revisando gráficos", "map": "Resumiendo",
-              "verify": "Verificando contra el PDF", "reduce": "Redactando", "refine": "Puliendo"}
 
 
 class QueueUI(UI):
@@ -170,7 +168,6 @@ class PdfPage(ctk.CTkFrame):
         ctk.CTkButton(drop, text="Añadir carpeta…", height=28, width=140, corner_radius=8, fg_color="transparent",
                       text_color=MUTED, hover_color=SURFACE, font=ctk.CTkFont(FONT, 12),
                       command=self._add_folder).pack(pady=(0, 14))
-        self.drop_zone = drop
 
         self.file_list = ctk.CTkFrame(left, fg_color="transparent")
         self.file_list.pack(fill="x", padx=6, pady=(8, 0))
@@ -276,8 +273,12 @@ class PdfPage(ctk.CTkFrame):
         bar = ctk.CTkFrame(main, fg_color="transparent")
         bar.grid(row=2, column=0, sticky="ew", pady=(10, 0))
         bar.grid_columnconfigure(0, weight=1)
-        self.stats_lbl = ctk.CTkLabel(bar, text="", text_color=MUTED, font=ctk.CTkFont(FONT, 12), anchor="w")
+        self.stats_lbl = ctk.CTkLabel(bar, text="", text_color=MUTED, font=ctk.CTkFont(FONT, 12), anchor="w", justify="left",
+                                      wraplength=400)
         self.stats_lbl.grid(row=0, column=0, sticky="ew")
+        # el texto de estadísticas ocupa el ancho que dejan los botones y, si no cabe, pasa a otra línea (antes se cortaba)
+        bar.bind("<Configure>", lambda e: self.stats_lbl.configure(
+            wraplength=max(200, int(e.width / ctk.ScalingTracker.get_window_scaling(self)) - 300)))
         self.copy_btn = ctk.CTkButton(bar, text="Copiar para IA", width=130, height=34, corner_radius=8, fg_color="transparent",
                                       border_width=1, border_color=BORDER, text_color=TEXT, hover_color=SURFACE,
                                       font=ctk.CTkFont(FONT, 13), command=self._copy)
@@ -640,7 +641,7 @@ class PdfPage(ctk.CTkFrame):
 
     def _render_text(self, md: str):
         """Visor de reserva (sin tkinterweb): Markdown casi en bruto con fórmulas en Unicode."""
-        from ..pdf.textproc import latex_to_text
+        from ..core.latex_text import latex_to_text
         t = self.view._textbox
         t.configure(state="normal")
         t.delete("1.0", "end")

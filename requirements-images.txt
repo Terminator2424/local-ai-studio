@@ -1,0 +1,12 @@
+# Generación de imágenes (opcional): Stable Diffusion 1.5 y SDXL en la GPU.
+#
+# 1) PyTorch con CUDA NO sale del PyPI estándar (allí solo hay la versión de CPU). Instálalo primero; elige el «cuXXX»
+#    que corresponda a tu driver en https://pytorch.org :
+#       python -m pip install torch --index-url https://download.pytorch.org/whl/cu128
+# 2) Después:
+#       python -m pip install -r requirements-images.txt
+# Comprueba en Ajustes que PyTorch muestra «con CUDA».
+diffusers>=0.35,<1
+transformers>=4.45,<6        # codificadores de texto de los modelos
+accelerate>=1,<2             # descarga parcial a la CPU (SDXL con 8 GB)
+safetensors>=0.4,<1          # formato de pesos sin código ejecutable (la app rechaza cualquier otro)

@@ -11,7 +11,8 @@ import re
 import unicodedata
 from pathlib import Path
 
-from .mdview import _MATH_SPAN, _formula_png, convert_arrays
+from .latex_text import MATH_SPAN, latex_to_text
+from .mdview import _formula_png, convert_arrays
 
 _PLACE = re.compile(r"@@M(\d+)@@")
 _CTRL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")          # caracteres que Word no admite en el XML
@@ -27,7 +28,6 @@ def md_to_docx(md: str, path: str | Path) -> Path:
     from docx.shared import Cm, Pt
     from markdown_it import MarkdownIt
 
-    from ..pdf.textproc import latex_to_text
 
     md = _clean(convert_arrays(md))
     spans: list[tuple[str, bool]] = []
@@ -37,7 +37,7 @@ def md_to_docx(md: str, path: str | Path) -> Path:
         spans.append((body, m.group(0).startswith(("$$", "\\["))))
         return f"@@M{len(spans) - 1}@@"
 
-    tokens = MarkdownIt("commonmark", {"html": False}).enable("table").parse(_MATH_SPAN.sub(protect, md))
+    tokens = MarkdownIt("commonmark", {"html": False}).enable("table").parse(MATH_SPAN.sub(protect, md))
     doc = Document()
     doc.styles["Normal"].font.name = "Calibri"
     doc.styles["Normal"].font.size = Pt(11)

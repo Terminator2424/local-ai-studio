@@ -25,7 +25,6 @@ log = logging.getLogger(__name__)
 _PAGENUM_RE = re.compile(r"^\s*(p[áa]g(ina)?\.?|page)?\s*\d+(\s*(de|of|/)\s*\d+)?\s*$", re.I)
 _MATH_CHARS = set("∫∑∏≈≤≥≠±√∞∂∈→−×÷∇∮")
 _ORPHAN_RE = re.compile(r"^(Z{1,3}|[0-9]{1,2}|[A-Za-z]{1,2})$")
-_NUM_RE = re.compile(r"\d+(?:[.,]\d+)?")
 
 
 @dataclass
@@ -122,10 +121,6 @@ def _strip_headers_footers(texts: list[str]) -> list[str]:
             kept.append(ln)
         out.append("\n".join(kept).strip("\n"))
     return out
-
-
-def _numbers(text: str) -> set[str]:
-    return {t.replace(",", ".") for t in _NUM_RE.findall(text)}
 
 
 @dataclass

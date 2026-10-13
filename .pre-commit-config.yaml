@@ -1,12 +1,12 @@
-# Instalación (una vez):  pip install pre-commit detect-secrets  &&  pre-commit install
-# Cada «git commit» escaneará los cambios en busca de claves de API, tokens y contraseñas.
+# Instalación (una vez):  python -m pip install -r requirements-dev.txt  &&  pre-commit install
+# Cada «git commit» comprueba el estilo y escanea los cambios en busca de claves de API, tokens y contraseñas.
 repos:
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
-        exclude: '(^|/)(venv|resumenes|imagenes)/'
+        exclude: '(^|/)(venv|resumenes|imagenes|models|outputs|conversations)/'
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
@@ -17,3 +17,12 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
+
+  # Hook local (usa el ruff de tu entorno: no descarga nada extra)
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff (estilo y errores)
+        entry: python -m ruff check
+        language: system
+        types: [python]

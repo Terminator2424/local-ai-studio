@@ -60,7 +60,6 @@ class ChatPage(ctk.CTkFrame):
         self._live_text = ""
         self._token = 0              # invalida los redibujados de fórmulas que llegan tarde
         self._dots = 0
-        self._last_model_checked = ""
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)

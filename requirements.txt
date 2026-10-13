@@ -1,40 +1,26 @@
-# Local AI Studio: dependencias por secciones. Las versiones exactas probadas están en requirements-lock.txt.
+# Local AI Studio: dependencias de EJECUCIÓN (Python 3.12, Windows 10/11).
+# Cubren resumir PDF, documentos, chat, estudiar y editar imágenes.
+#   Para GENERAR imágenes añade también requirements-images.txt.
+#   Para desarrollar (pruebas, estilo, seguridad) usa requirements-dev.txt.
+# Los rangos son los de las versiones probadas; requirements-lock.txt tiene el listado exacto del entorno de desarrollo.
 
-# --- Núcleo (PDF, chat, documentos, estudiar)
-ollama
-pymupdf
-pdfplumber
-pypdf
-pyyaml
-pillow
-numpy
-sympy                # verificación simbólica de fórmulas
-markdown-it-py
-python-docx          # exportación a Word
-huggingface_hub      # solo para las descargas de modelos de imágenes que confirmas
-tqdm
-rich
+# --- Núcleo
+ollama>=0.6,<1
+pymupdf>=1.26,<2
+pdfplumber>=0.11,<1          # lector de respaldo para páginas que PyMuPDF no extrae
+pyyaml>=6,<7
+pillow>=11,<14
+numpy>=2,<3
+sympy>=1.13,<2               # verificación simbólica de fórmulas
+markdown-it-py>=3,<5
+python-docx>=1,<2            # exportación a Word
+huggingface_hub>=0.30,<2     # solo para las descargas de modelos de imágenes que confirmas
 
 # --- Interfaz
-customtkinter
-tkinterdnd2          # arrastrar y soltar (opcional)
-tkinterweb           # visor HTML del resumen y del chat
-matplotlib           # fórmulas LaTeX como imágenes (mathtext)
+customtkinter>=5.2,<7
+tkinterdnd2>=0.4,<1          # arrastrar y soltar (opcional)
+tkinterweb>=4,<5             # visor HTML del resumen y del chat
+matplotlib>=3.9,<4           # fórmulas LaTeX como imágenes (mathtext)
 
-# --- Hardware (detección de GPU/VRAM)
-nvidia-ml-py         # importa como «pynvml»
-
-# --- Imágenes (opcional). PyTorch con CUDA NO sale de PyPI estándar; instálalo antes con:
-#       pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
-torch
-torchvision
-diffusers
-transformers
-accelerate
-safetensors
-
-# --- Seguridad y desarrollo
-pre-commit
-detect-secrets
-bandit
-pip-audit
+# --- Hardware
+nvidia-ml-py>=12,<14         # detección de GPU/VRAM (se importa como «pynvml»)

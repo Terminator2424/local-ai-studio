@@ -46,7 +46,6 @@ extraction:
   third_reading: false            # OCR matemático pix2tex como 3.ª lectura (opcional, CPU, ~1 min/página; ver README)
   math_min_score: 2               # sensibilidad de la detección de fórmulas (menor = más páginas pasan por visión)
   transcribe_tokens: 3500         # tokens máximos al transcribir una página
-  numeric_crosscheck: 0.85        # si la visión pierde más del 15 % de las cifras del texto, se añade el texto extraído
 
 chunking:
   chunk_size: 2000

@@ -14,12 +14,12 @@ import customtkinter as ctk
 
 from ..chat.engine import MODEL_INFO, ChatEngine, model_detail, model_label
 from ..core import hardware_detector as hw
-from ..core import storage
+from ..core import netguard, storage
 from ..images import models as mdl
 from .theme import BORDER, ERR, OK, SURFACE, TEXT, WARN, ghost_button, label
 
 log = logging.getLogger(__name__)
-EXTRA_MODELS = {"nomic-embed-text": "Embeddings para «Chat con mis documentos» (≈ 270 MB)"}
+EXTRA_MODELS = {"nomic-embed-text": "Búsqueda por sentido en «Documentos» (≈ 270 MB)"}
 
 
 def torch_report() -> dict:
@@ -97,6 +97,10 @@ class SettingsPage(ctk.CTkFrame):
         self.mem_lbl.pack(anchor="w", padx=16, pady=(0, 6), fill="x")
         ghost_button(self.mem_card, "Liberar toda la VRAM", self._free, width=170, height=30).pack(anchor="w", padx=16, pady=(0, 12))
 
+        self.net_card = self._card("Barrera de red")
+        self.net_lbl = label(self.net_card, "", 13, justify="left", anchor="w", wraplength=900)
+        self.net_lbl.pack(anchor="w", padx=16, pady=(0, 12), fill="x")
+
         self.llm_card = self._card("Modelos de chat (Ollama, solo en 127.0.0.1)")
         self.llm_rows = ctk.CTkFrame(self.llm_card, fg_color="transparent")
         self.llm_rows.pack(fill="x", padx=16, pady=(0, 6))
@@ -172,6 +176,7 @@ class SettingsPage(ctk.CTkFrame):
                  f"RAM: {i.ram_gb:.0f} GB", *i.notes]
         self.hw_lbl.configure(text="\n".join(lines), text_color=TEXT)
         self.cfg_lbl.configure(text=d["cfg"], text_color=TEXT)
+        self._show_network()
         running = d["running"]
         state = self.manager.state
         self.mem_lbl.configure(text=f"Gestor: {state}\nOllama tiene cargado: {', '.join(running) if running else 'nada'}")
@@ -204,6 +209,18 @@ class SettingsPage(ctk.CTkFrame):
                 label(row, "descárgalo desde «Generar imagen»", 12, muted=True).pack(side="right")
 
         self._show_storage(d["storage"])
+
+    def _show_network(self):
+        """La barrera de red a la vista: activa o no, y los intentos de conexión externa que bloqueó."""
+        if not netguard.is_active():
+            self.net_lbl.configure(text="⚠ La barrera de red no está activa.", text_color=ERR)
+            return
+        blocked = netguard.blocked_attempts()
+        text = ("✔ Activa: esta aplicación solo puede hablar con este equipo (127.0.0.1); cualquier conexión a Internet se aborta, "
+                "salvo las descargas de modelos que confirmas.\n")
+        text += (f"Intentos bloqueados desde que abriste la aplicación: {len(blocked)}"
+                 + ("".join(f"\n  • {b}" for b in blocked[-5:])) if blocked else "Intentos bloqueados desde que abriste la aplicación: 0")
+        self.net_lbl.configure(text=text, text_color=OK if not blocked else WARN)
 
     def _show_storage(self, rows):
         for w in self.disk_rows.winfo_children():

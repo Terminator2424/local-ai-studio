@@ -26,7 +26,7 @@ class TestEdicion(unittest.TestCase):
         im = sample()
         out = edit.apply(im, EditParams())
         self.assertEqual(out.tobytes(), im.tobytes())
-        self.assertTrue(EditParams().is_identity())
+        self.assertEqual(EditParams(), EditParams())
 
     def test_no_modifica_la_original(self):
         im = sample()
@@ -141,6 +141,25 @@ class TestGuardado(unittest.TestCase):
             p.write_text("esto no es una imagen")
             with self.assertRaises(Exception):
                 edit.load(p)
+
+    def test_cargar_rechaza_una_bomba_de_descompresion_sin_decodificarla(self):
+        """Una imagen de 1 bit de 12000×12000 (144 MP) ocupa unos KB en disco: el tamaño se mira en la cabecera, no tras decodificar."""
+        from unittest import mock
+
+        from PIL import ImageFile
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "bomba.png"
+            Image.new("1", (12000, 12000)).save(p)
+            self.assertLess(p.stat().st_size, 1_000_000)
+            with mock.patch.object(ImageFile.ImageFile, "load", side_effect=AssertionError("se decodificó antes de comprobar")), \
+                    self.assertRaisesRegex(ValueError, "demasiado grande"):
+                edit.load(p)
+
+    def test_cargar_acepta_una_imagen_normal(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "ok.png"
+            sample().save(p)
+            self.assertEqual(edit.load(p).size, sample().size)
 
 
 if __name__ == "__main__":

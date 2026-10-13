@@ -195,9 +195,9 @@ class EditPage(ctk.CTkFrame):
         bw, bh = self._base_size()
         try:
             if which == "w":
-                self.h_var.set(str(max(1, round(int(self.w_var.get()) * bh / bw))))
+                self.h_var.set(str(edit.fit_size((bw, bh), w=int(self.w_var.get()))[1]))
             else:
-                self.w_var.set(str(max(1, round(int(self.h_var.get()) * bw / bh))))
+                self.w_var.set(str(edit.fit_size((bw, bh), h=int(self.h_var.get()))[0]))
         except ValueError:
             pass
         self._changed()

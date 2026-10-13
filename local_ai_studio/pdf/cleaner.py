@@ -38,28 +38,6 @@ def _words4(line: str) -> int:
 
 
 # ------------------------------------------------------------ fórmulas de la visión
-def merge_equations(text: str, eqs: list) -> str:
-    """Sustituye las líneas «de fórmula» rotas del PDF (fracciones desordenadas, símbolos sueltos) por las fórmulas
-    LaTeX leídas con visión, insertadas según su posición relativa en la página."""
-    if not eqs:
-        return text
-    lines = text.splitlines()
-    n = len(lines)
-    noise = [(not ln.strip().startswith("|")) and bool(ln.strip()) and _words4(ln) == 0 and bool(_FORMULA_NOISE.match(ln))
-             and not _NUMBERED.match(ln) for ln in lines]
-    inserts: dict[int, list[str]] = {}
-    for rel, eq in eqs:
-        idx = min(n - 1, max(0, int(rel * n)))
-        while idx < n and noise[idx]:          # se coloca antes de la primera línea que se conserva
-            idx += 1
-        inserts.setdefault(idx, []).append(f"$$ {eq} $$")
-    out: list[str] = []
-    for i, ln in enumerate(lines):
-        out += inserts.get(i, [])
-        if not noise[i]:
-            out.append(ln)
-    out += inserts.get(n, [])
-    return "\n".join(out)
 
 
 # ---------------------------------------------------------------- código

@@ -6,6 +6,7 @@ aplicación fija OLLAMA_HOST=127.0.0.1 en su propio proceso y se niega a hablar 
 """
 from __future__ import annotations
 
+import atexit
 import contextlib
 import logging
 import os
@@ -67,6 +68,9 @@ def close_clients() -> None:
                 with contextlib.suppress(Exception):
                     http.close()
         _CLIENTS.clear()
+
+
+atexit.register(close_clients)
 
 
 def check_ollama(cfg: dict, need_vision: bool = True) -> None:

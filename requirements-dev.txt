@@ -1,0 +1,11 @@
+# Desarrollo: pruebas, estilo, tipos, seguridad y empaquetado.
+-r requirements.txt
+
+ruff>=0.8                    # estilo y errores (python -m ruff check .)
+mypy>=1.13                   # tipos (python -m mypy local_ai_studio)
+coverage>=7                  # cobertura de las pruebas
+bandit>=1.8                  # análisis de seguridad del código
+pip-audit>=2.7               # vulnerabilidades conocidas en las dependencias
+pre-commit>=4                # hooks antes de cada commit
+detect-secrets>=1.5          # que no se cuelen claves en el repositorio
+pyinstaller>=6.10            # solo para build_exe.bat

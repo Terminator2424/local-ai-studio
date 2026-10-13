@@ -137,14 +137,12 @@ class ImageGenerator:
         seeds = params.seeds()
         results: list[Result] = []
         total_steps = params.steps * len(seeds)
-        done_steps = 0
         for n, seed in enumerate(seeds):
             if cancel is not None and cancel.is_set():
                 raise Cancelled()
             gen = torch.Generator("cuda").manual_seed(seed)
 
             def step_cb(pipe, i, t, kw, _n=n):
-                nonlocal done_steps
                 if cancel is not None and cancel.is_set():
                     pipe._interrupt = True
                 if on_progress:

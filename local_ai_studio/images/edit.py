@@ -11,6 +11,7 @@ from pathlib import Path
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 SAVE_FORMATS = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}
+MAX_PIXELS = 120_000_000   # tope de píxeles al abrir una imagen
 MAX_SIDE = 16384        # tope de lado para no agotar la memoria con un resize descontrolado
 
 
@@ -29,10 +30,6 @@ class EditParams:
     contrast: float = 1.0
     saturation: float = 1.0
     extra: dict = field(default_factory=dict)
-
-    def is_identity(self) -> bool:
-        return self == EditParams()
-
 
 def _crop(img: Image.Image, box: tuple[float, float, float, float]) -> Image.Image:
     left, t, r, b = box
@@ -120,9 +117,11 @@ def save(img: Image.Image, path: str | Path, fmt: str | None = None, quality: in
 
 
 def load(path: str | Path) -> Image.Image:
-    """Abre una imagen validando que lo sea y limitando su tamaño (evita bombas de descompresión)."""
+    """Abre una imagen validando que lo sea y limitando su tamaño (evita bombas de descompresión).
+    El tamaño se comprueba con la cabecera, ANTES de decodificar los píxeles: una imagen diminuta en disco puede
+    declarar miles de millones de píxeles."""
     with Image.open(path) as im:
+        if im.width * im.height > MAX_PIXELS:
+            raise ValueError(f"La imagen es demasiado grande (más de {MAX_PIXELS // 1_000_000} megapíxeles).")
         im.load()
-        if im.width * im.height > 120_000_000:
-            raise ValueError("La imagen es demasiado grande (más de 120 megapíxeles).")
         return im.copy()

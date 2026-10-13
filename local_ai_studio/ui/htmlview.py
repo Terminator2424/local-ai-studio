@@ -49,7 +49,7 @@ class MdView(ctk.CTkFrame):
     def show(self, md: str):
         self.md = md
         if self.web is None:
-            from ..pdf.textproc import latex_to_text
+            from ..core.latex_text import latex_to_text
             t = self.text._textbox
             t.configure(state="normal")
             t.delete("1.0", "end")

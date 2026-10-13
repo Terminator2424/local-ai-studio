@@ -1,9 +1,13 @@
+# Entorno EXACTO con el que se probó Local AI Studio (pip freeze, Python 3.12, Windows 11). Solo de referencia:
+# para instalar usa requirements.txt. torch viene de https://download.pytorch.org/whl/cu128 (build +cu128).
 accelerate==1.15.0
 albucore==0.0.23
 albumentations==1.4.24
+altgraph==0.17.5
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
+ast_serialize==0.13.0
 bandit==1.9.4
 boolean.py==5.0
 CacheControl==0.14.4
@@ -14,6 +18,7 @@ charset-normalizer==3.5.2
 click==8.5.0
 colorama==0.4.6
 contourpy==1.4.0
+coverage==7.16.2
 cryptography==50.0.2
 customtkinter==6.0.0
 cycler==0.12.1
@@ -43,8 +48,10 @@ Jinja2==3.1.6
 jsonpatch==1.35
 jsonpointer==3.2.1
 kiwisolver==1.5.1
+librt==0.16.0
 license-expression==30.4.4
 lxml==6.1.3
+mando==0.7.1
 markdown-it-py==4.2.0
 MarkupSafe==3.0.3
 matplotlib==3.11.2
@@ -52,6 +59,8 @@ mdurl==0.1.2
 mpmath==1.3.0
 msgpack==1.2.3
 munch==4.0.0
+mypy==2.4.0
+mypy_extensions==1.1.0
 networkx==3.6.1
 nodeenv==1.11.0
 numpy==2.5.4
@@ -63,8 +72,10 @@ ormsgpack==1.12.2
 packageurl-python==0.17.6
 packaging==26.3
 pandas==3.0.6
+pathspec==1.1.1
 pdfminer.six==20260107
 pdfplumber==0.11.10
+pefile==2024.8.26
 pillow==12.3.0
 pip-requirements-parser==32.0.1
 pip_api==0.0.35
@@ -78,6 +89,8 @@ pycparser==3.11
 pydantic==2.14.1
 pydantic_core==2.50.1
 Pygments==2.21.0
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.8
 pymupdf==1.28.2
 pyparsing==3.3.3
 pypdf==6.20.0
@@ -86,11 +99,14 @@ pyreadline3==3.5.6
 python-dateutil==2.9.0.post0
 python-discovery==1.6.2
 python-docx==1.2.0
+pywin32-ctypes==0.2.3
 PyYAML==6.0.3
+radon==6.0.1
 regex==2026.9.29
 requests==2.34.2
 requests-toolbelt==1.0.0
 rich==15.0.0
+ruff==0.17.0
 safetensors==0.8.0
 scipy==1.18.1
 setuptools==84.0.0
@@ -122,6 +138,7 @@ tzdata==2026.5
 urllib3==2.8.0
 uuid_utils==0.17.1
 virtualenv==21.14.7
+vulture==2.16
 websockets==16.1.1
 x-transformers==0.15.0
 xxhash==4.0.1

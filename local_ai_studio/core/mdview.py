@@ -14,7 +14,7 @@ import unicodedata
 from functools import lru_cache
 from pathlib import Path
 
-from ..pdf.textproc import _ARRAY_RE, _MATH_SPAN, _array_to_table, latex_to_text
+from .latex_text import ARRAY_RE, MATH_SPAN, array_to_table, latex_to_text
 
 log = logging.getLogger(__name__)
 DPI = 220
@@ -57,10 +57,10 @@ def convert_arrays(md: str) -> str:
     """Los entornos array/tabular de LaTeX se convierten en tablas Markdown."""
     def rep(m):
         body = next(g for g in m.groups() if g is not None)
-        if _ARRAY_RE.search(body):
-            return "\n\n" + _array_to_table(body) + "\n\n"
+        if ARRAY_RE.search(body):
+            return "\n\n" + array_to_table(body) + "\n\n"
         return m.group(0)
-    return _MATH_SPAN.sub(rep, md)
+    return MATH_SPAN.sub(rep, md)
 
 
 THEMES = {
@@ -121,7 +121,7 @@ def md_to_html(md: str, theme: str = "dark", font: str = "Inter", outdir: Path |
         spans.append((body, display))
         return f"@@M{len(spans) - 1}@@"
 
-    protected = _MATH_SPAN.sub(protect, md)
+    protected = MATH_SPAN.sub(protect, md)
     html = MarkdownIt("commonmark", {"html": not safe}).enable("table").render(protected)
 
     def restore(m):
@@ -149,7 +149,3 @@ def md_to_html(md: str, theme: str = "dark", font: str = "Inter", outdir: Path |
     # Un bloque «$$…$$» queda dentro de <p>; se deja tal cual (los <div> dentro de <p> los admite el visor)
     return html, _css(t, font)
 
-
-def full_page(md: str, font: str = "Inter") -> str:
-    html, css = md_to_html(md, "dark", font)
-    return f"<html><head><meta charset='utf-8'><style>{css}</style></head><body>{html}</body></html>"

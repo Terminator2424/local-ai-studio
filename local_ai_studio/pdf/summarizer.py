@@ -118,6 +118,67 @@ class Summarizer:
         self.out_lang = out_lang
 
     # ------------------------------------------------------------- principal
+    def _validate_pdf(self, pdf_path: str) -> None:
+        """Rechaza lo que no se puede o no se debe procesar ANTES de gastar tiempo de IA."""
+        if not Path(pdf_path).is_file():
+            raise PDFError("El archivo no existe.")
+        lim = self.cfg.get("limits", {})
+        size_mb = Path(pdf_path).stat().st_size / 1024 ** 2
+        if size_mb > float(lim.get("max_pdf_mb", 200)):
+            raise PDFError(f"El PDF pesa {size_mb:.0f} MB (límite {lim.get('max_pdf_mb', 200)} MB, ver config.yaml → limits).")
+        doc = open_pdf(pdf_path)       # corrupto o cifrado: falla aquí con un mensaje claro
+        try:
+            n_pages = doc.page_count
+        finally:
+            doc.close()
+        self._check_page_limit(n_pages)
+
+    def _check_page_limit(self, n_pages: int) -> None:
+        limit = int(self.cfg.get("limits", {}).get("max_pages", 800))
+        if n_pages > limit:
+            raise PDFError(f"El PDF tiene {n_pages} páginas (límite {limit}, ver config.yaml → limits).")
+
+    def _token_stats(self, pages, md: str, n_pages: int) -> dict:
+        """Ahorro de tokens: el objetivo de la app es que un LLM lea el resumen en vez del PDF completo."""
+        tok_txt = est_tokens("\n".join(p.raw or p.text for p in pages))
+        per_page = int(self.cfg.get("tokens", {}).get("pdf_page_overhead", 1500))
+        tok_pdf = tok_txt + n_pages * per_page          # un LLM que recibe el PDF lee texto + imagen de cada página
+        tok_md = est_tokens(md)
+        return {"summary": tok_md, "pdf_text": tok_txt, "pdf": tok_pdf,
+                "saving": round(100 * (1 - tok_md / tok_pdf), 1) if tok_pdf else 0.0,
+                "saving_text": round(100 * (1 - tok_md / tok_txt), 1) if tok_txt else 0.0}
+
+    def _publish(self, result: dict, md: str, name: str, pdf_hash: str, phash: str) -> dict:
+        """Guarda el resultado en la caché y el Markdown en resumenes/; avisa a la interfaz de que terminó."""
+        cache.save(pdf_hash, "final", phash, result)
+        out = SUMMARIES_DIR / f"{safe_name(Path(name).stem)}_resumen.md"
+        out.write_text(md, encoding="utf-8")
+        result["saved_md"] = str(out)
+        self._log(f"✔ Guardado en {out}  (total {fmt_time(result['elapsed'])})")
+        self.ui.phase("done")
+        self.ui.progress(1.0, "Listo")
+        return result
+
+    def _extract(self, pdf_path: str, pdf_hash: str) -> tuple[list[PageData], str, int]:
+        """Páginas, título y nº de páginas: de la caché si se puede; si no, extrayendo (con visión donde haga falta)."""
+        s = self.s
+        math_vision = bool(s.get("math_vision", True))
+        double_vision = bool(s.get("double_vision", self.cfg["extraction"].get("double_vision", True)))
+        ekey = extraction_key(self.cfg, math_vision, double_vision)
+        cached_pages = cache.load(pdf_hash, "pages", ekey) if s["use_cache"] else None
+        if cached_pages:
+            self._log("↺ Extracción recuperada de caché")
+            return [PageData(**p) for p in cached_pages["pages"]], cached_pages["title"], cached_pages["n_pages"]
+        vision0 = Vision(self.cfg, self.cfg["prompts"]["es"], "el idioma original", self.cancel, self.ui.live)
+
+        def prog_extract(i, total, msg):
+            self.ui.progress(0.15 * i / max(1, total), msg)
+
+        pages, title, n_pages = extract_pages(pdf_path, pdf_hash, self.cfg, vision0, prog_extract, self.cancel,
+                                              math_vision=math_vision, phase=self.ui.phase, double_vision=double_vision)
+        cache.save(pdf_hash, "pages", ekey, {"pages": [p.__dict__ for p in pages], "title": title, "n_pages": n_pages})
+        return pages, title, n_pages
+
     def process(self, pdf_path: str) -> dict:
         t_start = time.time()
         pdf_path = str(pdf_path)
@@ -125,15 +186,7 @@ class Summarizer:
         if not Path(pdf_path).is_file():
             raise PDFError("El archivo no existe.")
         self._log(f"═══ {name} ═══")
-        lim = self.cfg.get("limits", {})
-        size_mb = Path(pdf_path).stat().st_size / 1024 ** 2
-        if size_mb > float(lim.get("max_pdf_mb", 200)):
-            raise PDFError(f"El PDF pesa {size_mb:.0f} MB (límite {lim.get('max_pdf_mb', 200)} MB, ver config.yaml → limits).")
-        d0 = open_pdf(pdf_path)       # valida el PDF (corrupto / cifrado) antes de gastar tiempo de IA
-        n_pdf_pages = d0.page_count
-        d0.close()
-        if n_pdf_pages > int(lim.get("max_pages", 800)):
-            raise PDFError(f"El PDF tiene {n_pdf_pages} páginas (límite {lim.get('max_pages', 800)}, ver config.yaml → limits).")
+        self._validate_pdf(pdf_path)
         check_ollama(self.cfg, need_vision=True)
 
         pdf_hash = sha256_file(pdf_path)
@@ -158,26 +211,8 @@ class Summarizer:
                 return hit
 
         # --- 1. Extracción -------------------------------------------------
-        math_vision = bool(s.get("math_vision", True))
-        double_vision = bool(s.get("double_vision", self.cfg["extraction"].get("double_vision", True)))
-        ekey = extraction_key(self.cfg, math_vision, double_vision)
-        cached_pages = cache.load(pdf_hash, "pages", ekey) if s["use_cache"] else None
-        if cached_pages:
-            self._log("↺ Extracción recuperada de caché")
-            pages = [PageData(**p) for p in cached_pages["pages"]]
-            title, n_pages = cached_pages["title"], cached_pages["n_pages"]
-        else:
-            vision0 = Vision(self.cfg, self.cfg["prompts"]["es"], "el idioma original", self.cancel, self.ui.live)
-
-            def prog_extract(i, total, msg):
-                self.ui.progress(0.15 * i / max(1, total), msg)
-
-            pages, title, n_pages = extract_pages(pdf_path, pdf_hash, self.cfg, vision0, prog_extract, self.cancel,
-                                                  math_vision=math_vision, phase=self.ui.phase,
-                                                  double_vision=double_vision)
-            cache.save(pdf_hash, "pages", ekey, {"pages": [p.__dict__ for p in pages], "title": title, "n_pages": n_pages})
-        if n_pages > int(lim.get("max_pages", 800)):
-            raise PDFError(f"El PDF tiene {n_pages} páginas (límite {lim.get('max_pages', 800)}, ver config.yaml → limits).")
+        pages, title, n_pages = self._extract(pdf_path, pdf_hash)
+        self._check_page_limit(n_pages)
         total_chars = sum(len(p.text) for p in pages)
         vis_pages = [p.number for p in pages if p.source in ("visión", "texto+fórmulas")]
         if total_chars < 50:
@@ -224,14 +259,8 @@ class Summarizer:
         md, quality = self._assemble(name, n_pages, vis_pages, summary, figures, source_text)
         self._log(f"Auditoría: cobertura de cifras {quality['coverage']} % · cifras del resumen sin respaldo: "
                   f"{len(quality['unsupported'])}" + (f" ({', '.join(quality['unsupported'][:12])})" if quality["unsupported"] else ""))
-        # Ahorro de tokens: el objetivo de la app es que un LLM lea el resumen en vez del PDF completo
-        tok_txt = est_tokens("\n".join(p.raw or p.text for p in pages))
-        per_page = int(self.cfg.get("tokens", {}).get("pdf_page_overhead", 1500))
-        tok_pdf = tok_txt + n_pages * per_page          # un LLM que recibe el PDF lee texto + imagen de cada página
-        tok_md = est_tokens(md)
-        tokens = {"summary": tok_md, "pdf_text": tok_txt, "pdf": tok_pdf,
-                  "saving": round(100 * (1 - tok_md / tok_pdf), 1) if tok_pdf else 0.0,
-                  "saving_text": round(100 * (1 - tok_md / tok_txt), 1) if tok_txt else 0.0}
+        tokens = self._token_stats(pages, md, n_pages)
+        tok_md, tok_pdf, tok_txt = tokens["summary"], tokens["pdf"], tokens["pdf_text"]
         lb = self.prompts["labels"]
         md += (f"> {lb['tokens']}: {tok_md:,} ({lb['vs_pdf']}: ≈{tok_pdf:,} con imágenes de página, {tok_txt:,} solo texto; "
                f"−{max(0, tokens['saving']):.0f} % / {'−' if tokens['saving_text'] >= 0 else '+'}{abs(tokens['saving_text']):.0f} %).\n")
@@ -246,14 +275,7 @@ class Summarizer:
             "language": self.lang_name, "vision_pages": vis_pages, "figures": len(figures),
             "quality": quality, "tokens": tokens, "elapsed": time.time() - t_start, "from_cache": False,
         }
-        cache.save(pdf_hash, "final", phash, result)
-        out = SUMMARIES_DIR / f"{safe_name(Path(name).stem)}_resumen.md"
-        out.write_text(md, encoding="utf-8")
-        result["saved_md"] = str(out)
-        self._log(f"✔ Resumen guardado en {out}  (total {fmt_time(result['elapsed'])})")
-        self.ui.phase("done")
-        self.ui.progress(1.0, "Listo")
-        return result
+        return self._publish(result, md, name, pdf_hash, phash)
 
     # ------------------------------------------------------- modo «Texto limpio»
     def _process_clean(self, name, pages, n_pages, vis_pages, title, t_start, pdf_hash, phash) -> dict:
@@ -298,13 +320,8 @@ class Summarizer:
         self._log("Fidelidad: " + (fid.summary() or "sin fórmulas ni código que verificar"))
         source_text = "\n".join(p.raw + "\n" + p.text + "\n" + "\n".join(e for _, e in p.eqs) for p in pages)
         quality = audit_numbers(md, md, source_text)
-        tok_txt = est_tokens("\n".join(p.raw or p.text for p in pages))
-        per_page = int(self.cfg.get("tokens", {}).get("pdf_page_overhead", 1500))
-        tok_pdf = tok_txt + n_pages * per_page
-        tok_md = est_tokens(md)
-        tokens = {"summary": tok_md, "pdf_text": tok_txt, "pdf": tok_pdf,
-                  "saving": round(100 * (1 - tok_md / tok_pdf), 1) if tok_pdf else 0.0,
-                  "saving_text": round(100 * (1 - tok_md / tok_txt), 1) if tok_txt else 0.0}
+        tokens = self._token_stats(pages, md, n_pages)
+        tok_md, tok_pdf = tokens["summary"], tokens["pdf"]
         md += (f"\n---\n\n> {lb['audit']}: {quality['coverage']} % {lb['coverage']}. "
                f"{lb['tokens']}: {tok_md:,} ({lb['vs_pdf']}: ≈{tok_pdf:,} con imágenes de página).\n")
         self._log(f"Tokens aprox.: {tok_md:,} · PDF completo ≈{tok_pdf:,} (ahorro {tokens['saving']} %)")
@@ -312,14 +329,7 @@ class Summarizer:
         result = {"markdown": md, "title": title, "file": name, "pages": n_pages, "chunks": 0,
                   "language": self.lang_name, "vision_pages": vis_pages, "figures": 0, "quality": quality,
                   "tokens": tokens, "fidelity": fid.as_dict(), "elapsed": time.time() - t_start, "from_cache": False}
-        cache.save(pdf_hash, "final", phash, result)
-        out = SUMMARIES_DIR / f"{safe_name(Path(name).stem)}_resumen.md"
-        out.write_text(md, encoding="utf-8")
-        result["saved_md"] = str(out)
-        self._log(f"✔ Guardado en {out}  (total {fmt_time(result['elapsed'])})")
-        self.ui.phase("done")
-        self.ui.progress(1.0, "Listo")
-        return result
+        return self._publish(result, md, name, pdf_hash, phash)
 
     def _fidelity(self, pages, body: str) -> Fidelity:
         """Informe de fidelidad: fórmulas verificadas, bloques de código comprobados y avisos por página."""

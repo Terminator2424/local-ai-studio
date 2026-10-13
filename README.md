@@ -1,142 +1,134 @@
 # Local AI Studio
 
-Asistente de IA **100 % local** para Windows: resume PDFs con fórmulas y código sin inventar nada, conversa, responde sobre tus
-propios documentos con citas de página, ayuda a estudiar, genera y edita imágenes, y puede ejecutar acciones sencillas en tu PC
-**solo con tu permiso**. Nada de lo que escribes ni de tus documentos sale del equipo.
+Asistente de IA **100 % local** para Windows: resume PDFs con fórmulas y código **sin inventar nada**, responde a tus propios
+documentos **citando la página**, conversa, ayuda a estudiar, genera y edita imágenes, y puede ejecutar acciones sencillas en tu PC
+**solo con tu permiso**. Nada de lo que escribes ni de tus documentos sale del equipo: sin nube, sin cuentas, sin telemetría.
 
-Pensado para una RTX 4060 de 8 GB (se adapta a tu hardware). Interfaz simple: fondo blanco, modo oscuro opcional, acento rojo.
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue) ![Windows](https://img.shields.io/badge/plataforma-Windows%2010%2F11-lightgrey) ![Licencia MIT](https://img.shields.io/badge/licencia-MIT-green) ![100 % local](https://img.shields.io/badge/IA-100%20%25%20local-d62839)
+
+Pensado para una GPU de 8 GB (RTX 4060) y 16 GB de RAM, pero se adapta al hardware que detecta. Interfaz simple: fondo blanco,
+modo oscuro opcional, acento rojo.
+
+<p align="center">
+  <img src="docs/img/documentos.png" width="49%" alt="Documentos: respuesta con la página citada">
+  <img src="docs/img/chat.png" width="49%" alt="Chat con selector de modelo y rol">
+</p>
+
+## Qué hace
 
 | Sección | Qué hace |
 |---|---|
-| **Resumir PDF** | PDF → Markdown fiel (código, tablas, fórmulas LaTeX) con verificación y exportación a `.md`, `.pdf` y `.docx`. Cola de carpetas con reanudación. |
-| **Documentos** | Pregunta a tus PDFs: búsqueda híbrida (palabras + sentido), respuestas con página citada y comprobación de cifras. |
-| **Chat** | Conversación con historial (SQLite), 6 modelos, parámetros, imágenes para el modelo de visión, Markdown + LaTeX. Interruptor **Herramientas** (ver abajo). |
+| **Resumir PDF** | PDF → Markdown fiel (código, tablas, **fórmulas LaTeX reconstruidas desde el propio PDF**) con verificación, e informe de fidelidad. Exporta `.md`, `.pdf` y `.docx`. Cola de carpetas con reanudación. |
+| **Documentos** | Pregunta a tus PDFs: búsqueda híbrida (palabras + sentido), respuestas con **página citada** y comprobación de citas y cifras. Eliges en qué documentos preguntar. |
+| **Chat** | 6 modelos con descripción (Llama 3.1 por defecto), roles (tutor, programador, seguridad defensiva…), historial, imágenes para el modelo de visión, Markdown + LaTeX. Interruptor **Herramientas**. |
 | **Estudiar** | Tarjetas (CSV para Anki), preguntas de práctica y ejercicios paso a paso con cada igualdad marcada ✓ / ✗ / ⚠. Ejecuta el código en un sandbox. |
-| **Generar imagen** | Stable Diffusion 1.5 y SDXL en fp16, lote 1–4, semilla, guardar/copiar/abrir carpeta. |
+| **Generar imagen** | Stable Diffusion 1.5 y SDXL en fp16, lote 1–4, semilla, guardar, copiar, enviar al editor. |
 | **Editar imagen** | Recorte, giros, tamaño y filtros con vista previa; guarda PNG, JPEG o WebP. |
-| **Ajustes** | Diagnóstico de GPU/VRAM/PyTorch, modelos instalados (descarga con confirmación) y liberar VRAM. |
+| **Ajustes** | Diagnóstico de GPU/VRAM/PyTorch, modelos, almacenamiento con limpieza segura y estado de la barrera de red. |
 
-## Instalación (Windows 10/11)
+El inventario completo, con límites, está en **[docs/CAPACIDADES.md](docs/CAPACIDADES.md)**.
+
+## Inicio rápido (Windows 10/11)
+
 1. Instala [Ollama](https://ollama.com) y [Python 3.12](https://www.python.org).
 2. Crea el entorno e instala las dependencias:
    ```bash
    python -m venv venv
-   venv\Scripts\activate
-   pip install -r requirements.txt
+   venv\Scripts\python.exe -m pip install -r requirements.txt
    ```
-3. **Solo para generar imágenes** instala PyTorch con CUDA (la versión por defecto de PyPI es la de CPU) y las librerías de difusión:
+3. Abre la aplicación con doble clic en `run.bat` (o `venv\Scripts\python.exe -m local_ai_studio`). La primera vez crea
+   `config.yaml` desde `config.example.yaml`.
+4. Descarga los modelos desde **Ajustes** (con confirmación) o a mano:
    ```bash
-   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
-   pip install diffusers accelerate
-   ```
-   Comprueba en **Ajustes** que PyTorch muestra «con CUDA». Elige el `cuXXX` que corresponda a tu driver en [pytorch.org](https://pytorch.org).
-4. Abre la app con doble clic en `run.bat` (o `python app.py`). La primera vez crea `config.yaml` desde `config.example.yaml`.
-5. Descarga los modelos desde la propia app (**Ajustes**, con confirmación) o a mano:
-   ```bash
+   ollama pull llama3.1:8b
    ollama pull qwen2.5:7b
    ollama pull qwen2.5vl:7b
    ollama pull nomic-embed-text
    ```
-   Opcionales: `llama3.1:8b`, `gemma2:9b`, `mistral:7b`, `qwen2.5-coder:7b`. Los modelos de imagen se descargan desde **Generar imagen**.
+   Opcionales: `gemma2:9b`, `mistral:7b`, `qwen2.5-coder:7b`.
 
-## La VRAM: un modelo a la vez
-Con 8 GB no caben a la vez un modelo de chat y uno de imágenes. `local_ai_studio/core/model_manager.py` decide qué está cargado: antes de generar
-imágenes descarga los modelos de Ollama, y antes de chatear libera el pipeline de imágenes. La barra inferior muestra qué hay en memoria y
-la VRAM libre; al cambiar de función hay una espera de unos segundos mientras se carga el otro modelo.
+**Para generar imágenes** instala además PyTorch con CUDA (la versión de PyPI es la de CPU) y las librerías de difusión; los pasos
+están en [requirements-images.txt](requirements-images.txt). Comprueba en **Ajustes** que PyTorch muestra «con CUDA».
+
+¿Algo no va? `venv\Scripts\python.exe -m local_ai_studio --doctor` imprime un diagnóstico (dependencias, GPU, Ollama y modelos).
+
+## Documentación
+
+| Documento | Para qué |
+|---|---|
+| [docs/CAPACIDADES.md](docs/CAPACIDADES.md) | Todo lo que hace la aplicación, sección por sección, y lo que **no** hace |
+| [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Capas, hilos, flujo de «Resumir PDF», memoria de vídeo y decisiones de diseño |
+| [docs/AUDITORIA.md](docs/AUDITORIA.md) | Auditoría técnica: calificación, hallazgos corregidos y deuda conocida |
+| [SECURITY.md](SECURITY.md) | Modelo de amenazas, defensas, pruebas y límites honestos |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Cómo colaborar y qué se exige a un cambio |
+| [CHANGELOG.md](CHANGELOG.md) | Historia de versiones |
 
 ## Seguridad en una línea
-Barrera de red que bloquea cualquier conexión que no sea a `localhost`, visor sin imágenes externas ni enlaces, descargas solo de listas
-cerradas y con hash, y un asistente de acciones que **nunca** escribe, ejecuta ni abre nada sin enseñarte la acción exacta.
-Detalle, modelo de amenazas y límites honestos en [SECURITY.md](SECURITY.md).
 
-## Asistente con herramientas (acciones en el PC)
-En **Chat**, el interruptor **Herramientas** permite al modelo (Qwen 2.5, Llama 3.1, Mistral) pedir acciones:
+Barrera de red que bloquea cualquier conexión que no sea a `localhost`, visor sin imágenes externas ni enlaces, descargas solo de
+listas cerradas y con hash, la aplicación **nunca instala paquetes por su cuenta**, y un asistente de acciones que **nunca** escribe,
+ejecuta ni abre nada sin enseñarte la acción exacta. Detalle y límites en [SECURITY.md](SECURITY.md).
 
-| Herramienta | Permiso |
-|---|---|
-| listar carpeta, leer archivo (texto/PDF), buscar archivos, calcular, fecha y hora | automático, solo dentro de las carpetas permitidas |
-| crear archivo de texto, ejecutar Python aislado, abrir un documento o imagen | **te pide permiso cada vez**, mostrando la acción exacta |
+## Fidelidad: por qué se puede confiar en el resumen
 
-Por defecto solo trabaja en la carpeta `workspace/`. Puedes añadir carpetas de **lectura**. No hay terminal libre, ni red, ni borrado, ni
-instalación, ni acceso a claves o a carpetas del sistema. Si el modelo lee un archivo con instrucciones ocultas, la aplicación lo marca
-en la ventana de permiso. Todo queda en `conversations/actions.log`.
+Un modelo de 7B alucina si reescribe mucho texto técnico. Por eso el nivel por defecto, **Texto limpio**, no deja que ningún modelo
+reescriba el contenido: se **extrae y se comprueba**. Las fórmulas se reconstruyen desde la fuente, el tamaño y la línea base de cada
+símbolo del PDF; se leen además dos veces con visión y se contrastan; las cifras, las cadenas numéricas, las identidades (sympy) y el
+código se verifican con código. Lo que no se puede comprobar sale con ⚠ y dice **qué símbolo** difiere. Todo en
+[docs/CAPACIDADES.md](docs/CAPACIDADES.md#1-resumir-pdf).
 
-## Resumir PDF: cómo se garantiza la fidelidad
-Un modelo de 7B alucina si reescribe mucho texto técnico. Por eso en el nivel por defecto, **Texto limpio**, el contenido **no lo reescribe
-ningún modelo**: se extrae y se comprueba.
-- **Fórmulas reconstruidas desde el propio PDF** (`local_ai_studio/pdf/mathgeom.py`): un PDF de LaTeX guarda cada símbolo con su fuente, tamaño y línea
-  base, y las fracciones son reglas. Con eso se reconstruye el LaTeX sin modelo (fracciones, subíndices, integrales y sumatorios con límites).
-  Si algo no se puede explicar, el bloque se deja a la lectura de la visión. Cuando ambas lecturas discrepan, la fórmula sale con ⚠ y dice
-  **qué símbolo** difiere («PDF «3» · visión «2»»).
-- **Doble lectura de la visión** (200 y 300 dpi), **cifras** de cada fórmula presentes en el PDF, **cadenas numéricas** recalculadas sin `eval`
-  y **verificación simbólica** con sympy (`(x+1)^2 = x^2+1` se marca; `A = 36` o `F(1)` se dejan sin opinar).
-- **Código**: cada línea debe existir en el PDF, los delimitadores deben cuadrar y, en Python, compilar.
-- **Informe de fidelidad** al final: «fórmulas verificadas 96/101 · ⚠ 2 a revisar (págs. 3, 9)».
+## Calidad
 
-Los niveles con IA (Compacto IA, Normal, Detallado) reescriben y por eso se sanean con `local_ai_studio/pdf/scrub.py`; úsalos solo como secundarios.
-Detalle de cada nivel y del ahorro de tokens: **Texto limpio** ≈ 90 % menos tokens que enviar el PDF; un resumen con IA solo compensa en
-documentos largos de mucha prosa.
-
-## Versión empaquetada (.exe)
-`build_exe.bat` genera `dist\LocalAIStudio\LocalAIStudio.exe` con PyInstaller (≈ 270 MB). Sirve para PDF, chat, documentos, estudiar y editar
-imágenes. **No incluye PyTorch ni diffusers** (pesarían varios GB), así que ahí no se generan imágenes, y el sandbox de código no está disponible
-(necesita un Python que aislar): usa `run.bat` con el entorno completo para eso. Los datos (`config.yaml`, `resumenes/`, `conversations/`…)
-se guardan junto al `.exe`. Sigue necesitando Ollama instalado. No hay instalador (haría falta Inno Setup o similar); basta con copiar la carpeta.
-
-## Pruebas
 ```bash
-python -m unittest discover -s tests -v
+python -m pip install -r requirements-dev.txt
+python -m ruff check .                                   # 0 errores
+python -m mypy local_ai_studio                           # 0 errores
+python -m unittest discover -s tests                     # 322 pruebas, sin Ollama ni GPU
+python -m bandit -r local_ai_studio app.py -ll           # 0 hallazgos
 ```
-Más de 220 pruebas, ninguna necesita Ollama (el cliente se simula). Cubren extracción y verificación de PDFs, geometría de fórmulas,
-chat y almacén, gestor de VRAM, imágenes, RAG, modo estudiar, exportación a Word, el asistente y su sandbox, y la seguridad (barrera de red
-con un proceso real, ataques al visor, políticas de rutas, listas cerradas de descargas y patrones peligrosos en el código).
-La prueba de GPU real y las que usan el PDF de Simpson solo corren si el modelo o el archivo están en tu equipo.
-
-Auditoría de seguridad (opcional): `pip install bandit pip-audit` y luego `bandit -r local_ai_studio app.py -ll` y `pip-audit`.
-
-## Hardware: ajuste automático
-`local_ai_studio/core/hardware_detector.py` detecta GPU/VRAM (NVML o `nvidia-smi`), RAM y GPU integrada y ajusta, sin tocar tu `config.yaml`:
-
-| VRAM libre | Modelo | `num_ctx` |
-|---|---|---|
-| ≥ 12 GB | `qwen2.5:14b` (si está instalado) | 8192–16384 |
-| 8–12 GB | `qwen2.5:7b` | 16384 |
-| 6–8 GB | `qwen2.5:7b` | 8192 |
-| 4–6 GB | `qwen2.5:7b` | 4096 |
-| < 4 GB / sin GPU NVIDIA | `qwen2.5:7b` (o `3b`) en CPU | 2048–4096 |
-
-Nota: la VRAM libre real es menor que la total porque Windows usa parte para el escritorio (en una RTX 4060 de 8 GB suelen quedar ~6–7 GB).
-`python -m local_ai_studio.core.hardware_detector` imprime el diagnóstico.
+La integración continua (GitHub Actions) ejecuta lo mismo en cada cambio. La capa de lógica tiene un 81 % de cobertura; la interfaz
+se prueba abriendo la ventana real en un proceso aparte con datos temporales.
 
 ## Estructura
+
 ```
-app.py                       punto de entrada (ventana unificada)
-run.bat                      lanzador con doble clic
+app.py                       punto de entrada (equivale a python -m local_ai_studio)
+run.bat · build_exe.bat      lanzador con doble clic · empaquetado .exe (PyInstaller)
 config.example.yaml          plantilla de configuración y prompts (config.yaml es local)
-local_ai_studio/core/                    utils, hardware, caché, gestor de VRAM, barrera de red, visor Markdown, exportación a Word
-local_ai_studio/pdf/                     extracción, mathgeom (fórmulas desde glifos), symcheck (sympy), verificación, resumidor
-local_ai_studio/chat/                    historial SQLite, motor de Ollama, renderizado seguro
-local_ai_studio/agent/                   política de rutas, herramientas, bucle con permisos, sandbox
-local_ai_studio/rag/                     índice híbrido de documentos y comprobación de respuestas
-local_ai_studio/study/                   tarjetas y verificación de pasos
-local_ai_studio/images/                  catálogo y descarga verificada, generación (diffusers), edición (Pillow), portapapeles
-local_ai_studio/ui/                      ventana principal y páginas
-tests/                       pruebas
+local_ai_studio/
+  core/    rutas, configuración, cliente de Ollama, barrera de red, VRAM, almacenamiento, visor Markdown, exportación
+  pdf/     extracción, fórmulas desde glifos, verificación (sympy), limpieza, resumidor
+  chat/    motor de Ollama, historial SQLite, roles, renderizado seguro
+  agent/   política de rutas, herramientas, bucle con permisos, sandbox
+  rag/     índice híbrido de documentos y comprobación de respuestas
+  study/   tarjetas y verificación de pasos
+  images/  catálogo y descarga verificada, generación (diffusers), edición (Pillow)
+  ui/      ventana principal y páginas (CustomTkinter)
+tests/                       322 pruebas
+docs/                        capacidades, arquitectura y auditoría
 ```
-Datos de usuario (fuera de git): `resumenes/`, `imagenes/`, `conversations/` (chats, índice, registro de acciones), `outputs/`, `models/`, `workspace/`.
+Datos de usuario (fuera de git): `config.yaml`, `resumenes/`, `imagenes/`, `conversations/`, `outputs/`, `models/`, `workspace/`, `logs/`.
+Con `LOCAL_AI_STUDIO_HOME` puedes moverlos todos a otra carpeta.
+
+## Versión empaquetada (.exe)
+
+`build_exe.bat` genera `dist\LocalAIStudio\LocalAIStudio.exe` (≈ 270 MB). Sirve para PDF, documentos, chat, estudiar y editar
+imágenes. **No incluye PyTorch** (no genera imágenes) **ni el sandbox** de código; para eso usa `run.bat`. Sigue necesitando Ollama.
 
 ## Preguntas frecuentes
-**¿Tiene restricciones éticas, o hay que entrenarla?** Las restricciones y el conocimiento están en los pesos del modelo, fruto de su entrenamiento
-(Qwen, Llama, Mistral, Gemma); esta aplicación no los modifica. Su conocimiento acaba en su fecha de entrenamiento y puede equivocarse: por eso
-la app comprueba con código lo que se puede comprobar. No hace falta entrenar nada para usar tus documentos: eso lo cubre **Documentos**
-(RAG). Entrenar (fine-tuning con LoRA) solo sirve para cambiar estilo o formato y requiere datos y horas de GPU.
 
-**¿Puede controlar todo el PC?** No, y es deliberado. Ver «Asistente con herramientas» y [SECURITY.md](SECURITY.md).
+**¿Tiene restricciones éticas, o hay que entrenarla?** Las restricciones y el conocimiento están en los pesos de cada modelo (Llama,
+Qwen, Gemma, Mistral), fruto de su entrenamiento; esta aplicación **no los modifica** ni ofrece versiones «sin censura». Su
+conocimiento acaba en su fecha de entrenamiento y puede equivocarse, por eso la app comprueba con código lo que se puede comprobar. No
+hace falta entrenar nada para usar tus documentos: lo cubre **Documentos**. Para trabajo de seguridad legítimo hay un rol
+«Seguridad (defensiva)».
 
-**Licencias de los modelos.** Stable Diffusion 1.5: CreativeML OpenRAIL-M; SDXL: OpenRAIL++-M; los de Ollama, cada una la suya. Léelas antes de un uso comercial.
+**¿Puede controlar todo el PC?** No, y es deliberado: ocho herramientas cerradas, las que cambian algo piden tu permiso con la acción
+completa. Ver [docs/CAPACIDADES.md](docs/CAPACIDADES.md#4-asistente-con-herramientas-acciones-en-el-pc).
 
-## Contribuir
-1. Haz un fork y una rama (`git checkout -b mejora/lo-que-sea`).
-2. Instala los hooks: `pip install pre-commit detect-secrets && pre-commit install`.
-3. Cambios pequeños y comentados. Si cambias la extracción o los prompts del resumidor, sube `EXTRACT_VERSION` / `PIPELINE_VERSION` en `local_ai_studio/pdf/summarizer.py` (si no, devuelve caché vieja).
-4. Ejecuta las pruebas y, si tocas seguridad, `bandit` y `pip-audit`.
+**Licencias de los modelos.** Stable Diffusion 1.5: CreativeML OpenRAIL-M; SDXL: CreativeML OpenRAIL++-M; los de Ollama, cada una la
+suya. Léelas antes de un uso comercial.
+
+## Licencia
+
+[MIT](LICENSE) para el código de este repositorio. Los modelos que descargas tienen sus propias licencias.

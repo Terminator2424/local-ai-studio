@@ -83,7 +83,12 @@ def install() -> None:
     _installed = True
 
 
+def is_active() -> bool:
+    return _installed
+
+
 def blocked_attempts() -> list[str]:
+    """Últimas conexiones bloqueadas (máximo 50): se muestran en Ajustes como prueba de que la barrera trabaja."""
     return list(_blocked)
 
 

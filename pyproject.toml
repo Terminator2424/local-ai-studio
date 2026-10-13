@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "Asistente de IA 100 % local para Windows: resumir PDFs, preguntar a tus documentos con citas, chat, modo estudio y generación/edición de imágenes. Sin nube, sin cuentas."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = ["ollama", "local-ai", "rag", "pdf", "stable-diffusion", "privacy", "customtkinter"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -23,7 +23,7 @@ include = ["local_ai_studio*"]
 # Calidad de código: `ruff check .` y `mypy` deben terminar sin errores (los exige la integración continua).
 # ----------------------------------------------------------------------------------------------------------
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 140
 extend-exclude = ["venv", "build", "dist", "models", "outputs", "resumenes", "imagenes", "conversations", "workspace"]
 
@@ -51,7 +51,7 @@ ignore = [
 "local_ai_studio/agent/sandbox.py" = ["S"]        # ejecuta código a propósito, dentro del sandbox (ver SECURITY.md)
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 ignore_missing_imports = true
 warn_unused_ignores = true
 exclude = ["venv", "build", "dist", "tests"]

@@ -19,7 +19,8 @@ from local_ai_studio.chat.store import DEFAULT_MODEL, DEFAULT_PREFS, PREFS_VERSI
 from local_ai_studio.core import config, ollama_client
 from local_ai_studio.core.errors import Cancelled
 from local_ai_studio.core.textutil import detect_language, safe_name, sha256_file
-from local_ai_studio.pdf import extractor, textproc
+from local_ai_studio.core import latex_text
+from local_ai_studio.pdf import extractor
 from local_ai_studio.rag.index import DocIndex
 
 
@@ -30,11 +31,11 @@ class TestFormulasTruncadas(unittest.TestCase):
     def test_barra_invertida_final_no_rompe(self):
         for md in ("$x = 1\\$", "$\\frac{1}{2}\\$", "$\\sqrt\\$", "$a \\$"):
             with self.subTest(md=md):
-                self.assertIsInstance(textproc.latex_to_text(md), str)
+                self.assertIsInstance(latex_text.latex_to_text(md), str)
 
     def test_las_formulas_normales_siguen_igual(self):
-        self.assertEqual(textproc.latex_to_text("$\\frac{1}{3}(27+110)$"), "1/3(27+110)")
-        self.assertEqual(textproc.latex_to_text("$x^{2}$"), "x²")
+        self.assertEqual(latex_text.latex_to_text("$\\frac{1}{3}(27+110)$"), "1/3(27+110)")
+        self.assertEqual(latex_text.latex_to_text("$x^{2}$"), "x²")
 
 
 # ---------------------------------------------------------------------------------------------- red local

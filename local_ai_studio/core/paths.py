@@ -1,16 +1,28 @@
 """Rutas de la aplicación: dónde están el código, la configuración y los datos del usuario.
 
-Empaquetado con PyInstaller, los datos del usuario van junto al .exe (no dentro de la carpeta temporal interna) y
-los recursos incluidos en el paquete (plantillas) se leen de `BUNDLE_DIR`.
+- Normal: los datos van en la carpeta del proyecto.
+- Empaquetado con PyInstaller: los datos van junto al .exe (no dentro de la carpeta temporal interna) y los recursos
+  incluidos en el paquete (plantillas) se leen de `BUNDLE_DIR`.
+- `LOCAL_AI_STUDIO_HOME`: carpeta alternativa para TODOS los datos (config, chats, modelos, resúmenes…). Sirve para
+  instalaciones portátiles y para que las pruebas no toquen tus datos reales.
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 FROZEN = bool(getattr(sys, "frozen", False))
-BASE_DIR = Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parents[2]
-BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))
+_PROJECT = Path(__file__).resolve().parents[2]
+_HOME = os.environ.get("LOCAL_AI_STUDIO_HOME", "").strip()
+
+if FROZEN:
+    BASE_DIR = Path(sys.executable).resolve().parent
+elif _HOME:
+    BASE_DIR = Path(_HOME).resolve()
+else:
+    BASE_DIR = _PROJECT
+BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", _PROJECT))
 
 CONFIG_PATH = BASE_DIR / "config.yaml"
 CONFIG_EXAMPLE = BUNDLE_DIR / "config.example.yaml"
