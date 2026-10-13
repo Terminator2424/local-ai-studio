@@ -93,7 +93,8 @@ class ChatPage(ctk.CTkFrame):
 
     def shortcut(self, name: str):
         if name == "run":
-            self._send()
+            if not self.streaming:
+                self._send()
         elif name == "save":
             self._export()
 
@@ -217,6 +218,7 @@ class ChatPage(ctk.CTkFrame):
                                     border_color=BORDER, corner_radius=10, font=font(14))
         self.input.grid(row=0, column=0, sticky="ew")
         self.input.bind("<Return>", self._on_enter)
+        self.input.bind("<Escape>", lambda e: self.cancel.set() if self.streaming else None)
         btns = ctk.CTkFrame(box, fg_color="transparent")
         btns.grid(row=0, column=1, padx=(8, 0), sticky="ns")
         self.attach_btn = ghost_button(btns, "Imagen…", self._attach, width=96, height=30)
@@ -402,7 +404,8 @@ class ChatPage(ctk.CTkFrame):
     def _on_enter(self, event):
         if event.state & 0x1:       # Mayús+Enter: salto de línea
             return None
-        self._send()
+        if not self.streaming:      # una tecla nunca cancela: solo el botón «Detener» (o Esc) interrumpe la respuesta
+            self._send()
         return "break"
 
     def _send(self):
