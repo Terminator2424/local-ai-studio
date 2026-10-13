@@ -1,6 +1,6 @@
 # Contribuir a Local AI Studio
 
-Gracias por querer mejorar el proyecto. Es una aplicación de Windows que procesa documentos que pueden ser confidenciales, así que
+Gracias por querer mejorar el proyecto. Participar implica respetar el [código de conducta](CODE_OF_CONDUCT.md). Es una aplicación de Windows que procesa documentos que pueden ser confidenciales, así que
 las reglas son estrictas en tres cosas: **nada sale del equipo**, **lo que se puede comprobar se comprueba con código** y **nada que
 cambie algo ocurre sin permiso**.
 

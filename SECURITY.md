@@ -71,5 +71,13 @@ La revisión técnica completa de la estructura, la calidad, las pruebas y la ro
 - Antes de publicar el repositorio, comprueba que el repositorio git es el del proyecto (`git rev-parse --show-toplevel`).
 
 ## Reportar una vulnerabilidad
-Abre un aviso privado de seguridad en GitHub («Security → Report a vulnerability») o contacta a quien mantiene el repositorio.
+**Vía preferida:** un aviso privado en GitHub, que solo ve quien mantiene el repositorio:
+<https://github.com/Terminator2424/local-ai-studio/security/advisories/new> (pestaña **Security → Report a vulnerability**).
+
+Si no puedes usarla, escribe a quien mantiene el repositorio por su perfil de GitHub, [@Terminator2424](https://github.com/Terminator2424),
+**sin** detalles de explotación en público: pide un canal privado y ahí los compartes.
+
+Qué incluir: qué versión usas (`python -m local_ai_studio --version`), los pasos para reproducirlo y el impacto que crees que tiene.
+Responderé lo antes posible; si el fallo se confirma, se corrige y se menciona en el [CHANGELOG](CHANGELOG.md) (con tu permiso, con tu nombre).
+
 No publiques detalles de explotación en un issue público.

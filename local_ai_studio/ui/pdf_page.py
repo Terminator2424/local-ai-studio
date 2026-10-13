@@ -169,7 +169,7 @@ class PdfPage(ctk.CTkFrame):
                       text_color=MUTED, hover_color=SURFACE, font=ctk.CTkFont(FONT, 12),
                       command=self._add_folder).pack(pady=(0, 14))
 
-        self.file_list = ctk.CTkFrame(left, fg_color="transparent")
+        self.file_list = ctk.CTkFrame(left, fg_color="transparent", height=0)     # sin height=0 un marco vacío mide 200 px
         self.file_list.pack(fill="x", padx=6, pady=(8, 0))
 
         self._label(left, "Nivel")

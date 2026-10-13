@@ -57,7 +57,7 @@ class TestProyecto(unittest.TestCase):
 
     def test_los_documentos_esenciales_existen(self):
         for name in ("README.md", "SECURITY.md", "LICENSE", "pyproject.toml", "requirements.txt", "config.example.yaml",
-                     ".gitignore", ".gitattributes"):
+                     ".gitignore", ".gitattributes", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md", "CHANGELOG.md"):
             self.assertTrue((ROOT / name).is_file(), name)
 
     def test_los_datos_del_usuario_no_se_suben_a_git(self):
