@@ -146,8 +146,13 @@ class PdfPage(ctk.CTkFrame):
 
     # ---------------------------------------------------------- columna izquierda
     def _build_left(self):
-        left = ctk.CTkScrollableFrame(self, width=290, fg_color="transparent", scrollbar_button_color=BORDER)
-        left.grid(row=0, column=0, sticky="nsw", padx=(0, 0), pady=(0, 0))
+        wrap = ctk.CTkFrame(self, fg_color="transparent")
+        wrap.grid(row=0, column=0, sticky="nsw", padx=(0, 16))
+        wrap.grid_rowconfigure(0, weight=1)
+        left = ctk.CTkScrollableFrame(wrap, width=290, fg_color="transparent", scrollbar_button_color=BORDER)
+        left.grid(row=0, column=0, sticky="nsew")
+        footer = ctk.CTkFrame(wrap, fg_color="transparent")        # el botón principal siempre a la vista
+        footer.grid(row=1, column=0, sticky="ew", padx=(0, 14), pady=(6, 0))
 
         self._label(left, "Documento")
         drop = ctk.CTkFrame(left, fg_color=SURFACE, corner_radius=10, border_width=1, border_color=BORDER)
@@ -175,10 +180,10 @@ class PdfPage(ctk.CTkFrame):
         self.detail_hint = ctk.CTkLabel(left, text="", text_color=MUTED, font=ctk.CTkFont(FONT, 12), wraplength=260, justify="left")
         self.detail_hint.pack(anchor="w", padx=8, pady=(6, 0))
 
-        self.run_btn = ctk.CTkButton(left, text="Resumir", height=44, corner_radius=10, fg_color=ACCENT, hover_color=ACCENT_H,
+        self.run_btn = ctk.CTkButton(footer, text="Resumir", height=44, corner_radius=10, fg_color=ACCENT, hover_color=ACCENT_H,
                                      text_color="#ffffff", font=ctk.CTkFont(FONT, 15, "bold"), command=self._start)
-        self.run_btn.pack(fill="x", padx=6, pady=(22, 4))
-        self.cancel_btn = ctk.CTkButton(left, text="Cancelar", height=28, fg_color="transparent", hover_color=SURFACE,
+        self.run_btn.pack(fill="x", padx=6, pady=(0, 2))
+        self.cancel_btn = ctk.CTkButton(footer, text="Cancelar", height=28, fg_color="transparent", hover_color=SURFACE,
                                         text_color=MUTED, font=ctk.CTkFont(FONT, 12), command=self._cancel)
 
         # --- opciones (plegadas)

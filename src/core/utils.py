@@ -16,7 +16,10 @@ from pathlib import Path
 import yaml
 
 # ----------------------------------------------------------------- rutas
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+# Empaquetado con PyInstaller: los datos del usuario van junto al .exe, no dentro de la carpeta temporal interna
+FROZEN = bool(getattr(sys, "frozen", False))
+BASE_DIR = Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parent.parent.parent
+BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))      # recursos incluidos en el paquete (plantillas)
 CONFIG_PATH = BASE_DIR / "config.yaml"
 SUMMARIES_DIR = BASE_DIR / "resumenes"
 IMAGES_DIR = BASE_DIR / "imagenes"
@@ -45,6 +48,10 @@ def ensure_package(import_name: str, pip_name: str | None = None, required: bool
         return True
     except ImportError:
         pass
+    if FROZEN:      # en el .exe sys.executable es la propia aplicación: nunca se ejecuta pip
+        if required:
+            raise ImportError(f"Falta {import_name} en la versión empaquetada")
+        return False
     try:
         print(f"Instalando {pip_name or import_name} ...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name or import_name])
@@ -59,7 +66,7 @@ def ensure_package(import_name: str, pip_name: str | None = None, required: bool
 
 
 # ------------------------------------------------------ configuración
-CONFIG_EXAMPLE = BASE_DIR / "config.example.yaml"
+CONFIG_EXAMPLE = BUNDLE_DIR / "config.example.yaml"
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]"}
 
 # ---------------------------------------------------------------------------

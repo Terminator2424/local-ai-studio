@@ -77,6 +77,12 @@ Los niveles con IA (Compacto IA, Normal, Detallado) reescriben y por eso se sane
 Detalle de cada nivel y del ahorro de tokens: **Texto limpio** ≈ 90 % menos tokens que enviar el PDF; un resumen con IA solo compensa en
 documentos largos de mucha prosa.
 
+## Versión empaquetada (.exe)
+`build_exe.bat` genera `dist\LocalAIStudio\LocalAIStudio.exe` con PyInstaller (≈ 270 MB). Sirve para PDF, chat, documentos, estudiar y editar
+imágenes. **No incluye PyTorch ni diffusers** (pesarían varios GB), así que ahí no se generan imágenes, y el sandbox de código no está disponible
+(necesita un Python que aislar): usa `run.bat` con el entorno completo para eso. Los datos (`config.yaml`, `resumenes/`, `conversations/`…)
+se guardan junto al `.exe`. Sigue necesitando Ollama instalado. No hay instalador (haría falta Inno Setup o similar); basta con copiar la carpeta.
+
 ## Pruebas
 ```bash
 python -m unittest discover -s tests -v

@@ -38,3 +38,8 @@ test_ollama.py
 
 # Prompt personal para la siguiente sesión (no va al repo)
 PROMPT_SIGUIENTE_SESION.md
+
+# --- Empaquetado
+build/
+dist/
+*.spec

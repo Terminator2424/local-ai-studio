@@ -168,7 +168,7 @@ class ChatPage(ctk.CTkFrame):
         self.model_menu = option_menu(head, list(CHAT_MODELS), self.model_var, self._on_model, width=190)
         self.model_menu.grid(row=0, column=0)
         self.model_note = label(head, "", 12, muted=True)
-        self.model_note.grid(row=0, column=1, padx=12)
+        self.model_note.grid(row=1, column=0, columnspan=3, sticky="w", padx=4, pady=(2, 0))
         self.tools_var = ctk.BooleanVar(value=False)
         ctk.CTkSwitch(head, text="Herramientas", variable=self.tools_var, command=self._on_tools, progress_color=ACCENT,
                       font=font(12), text_color=TEXT).grid(row=0, column=3, sticky="e", padx=8)
@@ -180,7 +180,7 @@ class ChatPage(ctk.CTkFrame):
                                         text_color=MUTED, font=font(12), command=self._toggle_params)
         self.params_btn.grid(row=0, column=2)
         ghost_button(head, "Regenerar", self._regenerate, width=92, height=30).grid(row=0, column=4, padx=(0, 8))
-        ghost_button(head, "Exportar a Markdown", self._export, width=150, height=30).grid(row=0, column=5)
+        ghost_button(head, "Exportar .md", self._export, width=110, height=30).grid(row=0, column=5)
 
         self.params_box = ctk.CTkFrame(main, fg_color=SURFACE, corner_radius=10, border_width=1, border_color=BORDER)
         self._build_params(self.params_box)
@@ -531,7 +531,7 @@ class ChatPage(ctk.CTkFrame):
             if self.model_var.get() not in TOOL_MODELS:
                 self.model_var.set("qwen2.5:7b")
                 self._on_model("qwen2.5:7b")
-            self.tools_bar.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(8, 0))
+            self.tools_bar.grid(row=2, column=0, columnspan=6, sticky="ew", pady=(8, 0))
             self._refresh_tools_label()
         else:
             self.tools_bar.grid_forget()

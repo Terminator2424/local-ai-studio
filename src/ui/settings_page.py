@@ -79,11 +79,11 @@ class SettingsPage(ctk.CTkFrame):
         ghost_button(head, "Actualizar", self.refresh, width=100, height=30).pack(side="right", padx=8)
 
         self.hw_card = self._card("GPU y memoria")
-        self.hw_lbl = label(self.hw_card, "", 13, justify="left", anchor="w", wraplength=900)
+        self.hw_lbl = label(self.hw_card, "Leyendo el hardware…", 13, justify="left", anchor="w", wraplength=900)
         self.hw_lbl.pack(anchor="w", padx=16, pady=(0, 12), fill="x")
 
         self.cfg_card = self._card("Configuración aplicada (automática según tu hardware)")
-        self.cfg_lbl = label(self.cfg_card, "", 13, justify="left", anchor="w", wraplength=900)
+        self.cfg_lbl = label(self.cfg_card, "Leyendo…", 13, justify="left", anchor="w", wraplength=900)
         self.cfg_lbl.pack(anchor="w", padx=16, pady=(0, 12), fill="x")
 
         self.torch_card = self._card("PyTorch (imágenes)")
@@ -91,7 +91,7 @@ class SettingsPage(ctk.CTkFrame):
         self.torch_lbl.pack(anchor="w", padx=16, pady=(0, 12), fill="x")
 
         self.mem_card = self._card("En memoria ahora")
-        self.mem_lbl = label(self.mem_card, "", 13, justify="left", anchor="w", wraplength=900)
+        self.mem_lbl = label(self.mem_card, "Leyendo…", 13, justify="left", anchor="w", wraplength=900)
         self.mem_lbl.pack(anchor="w", padx=16, pady=(0, 6), fill="x")
         ghost_button(self.mem_card, "Liberar toda la VRAM", self._free, width=170, height=30).pack(anchor="w", padx=16, pady=(0, 12))
 

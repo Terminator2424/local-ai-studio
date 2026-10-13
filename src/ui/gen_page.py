@@ -60,8 +60,13 @@ class GenPage(ctk.CTkFrame):
 
     # ------------------------------------------------------------ controles
     def _build_controls(self):
-        left = ctk.CTkScrollableFrame(self, width=330, fg_color="transparent", scrollbar_button_color=BORDER)
-        left.grid(row=0, column=0, sticky="nsw", padx=(0, 16))
+        wrap = ctk.CTkFrame(self, fg_color="transparent")
+        wrap.grid(row=0, column=0, sticky="nsw", padx=(0, 16))
+        wrap.grid_rowconfigure(0, weight=1)
+        left = ctk.CTkScrollableFrame(wrap, width=330, fg_color="transparent", scrollbar_button_color=BORDER)
+        left.grid(row=0, column=0, sticky="nsew")
+        footer = ctk.CTkFrame(wrap, fg_color="transparent")        # el botón principal siempre a la vista
+        footer.grid(row=1, column=0, sticky="ew", padx=(0, 14), pady=(6, 0))
 
         label(left, "Modelo", 13, "bold").pack(anchor="w", padx=6, pady=(0, 4))
         self.model_var = ctk.StringVar(value="sd15")
@@ -115,15 +120,15 @@ class GenPage(ctk.CTkFrame):
         self.batch.set("1")
         self.batch.pack(side="left", padx=10)
 
-        self.gen_btn = primary_button(left, "Generar", self._generate, height=44)
-        self.gen_btn.pack(fill="x", padx=6, pady=(20, 4))
-        self.cancel_btn = ctk.CTkButton(left, text="Cancelar", height=28, fg_color="transparent", hover_color=SURFACE,
+        self.gen_btn = primary_button(footer, "Generar", self._generate, height=44)
+        self.gen_btn.pack(fill="x", padx=6, pady=(0, 2))
+        self.cancel_btn = ctk.CTkButton(footer, text="Cancelar", height=28, fg_color="transparent", hover_color=SURFACE,
                                         text_color=MUTED, font=font(12), command=self.cancel.set)
-        self.progress = ctk.CTkProgressBar(left, height=5, progress_color=ACCENT, fg_color=BORDER)
+        self.progress = ctk.CTkProgressBar(footer, height=5, progress_color=ACCENT, fg_color=BORDER)
         self.progress.set(0)
         self.progress.pack(fill="x", padx=6, pady=(6, 0))
-        self.status = label(left, "", 12, muted=True, wraplength=300, justify="left")
-        self.status.pack(anchor="w", padx=8, pady=(6, 10))
+        self.status = label(footer, "", 12, muted=True, wraplength=300, justify="left")
+        self.status.pack(anchor="w", padx=8, pady=(4, 4))
         self._upd_labels()
 
     def _slider_row(self, parent, text, var, lo, hi, steps):

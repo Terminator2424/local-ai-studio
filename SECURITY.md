@@ -37,6 +37,8 @@ vulnerabilidades del sistema operativo.
 - **Dependencias (`pip-audit`)**: sin vulnerabilidades conocidas tras actualizar `pip` y `setuptools` (tenían 18). `torch` (build CUDA) no se puede auditar contra PyPI.
 - **Revisión manual**: se encontraron y corrigieron cinco fallos que las herramientas no ven: el visor de resúmenes no usaba modo seguro (una imagen remota en el texto de un PDF se habría descargado), no había barrera de red de ejecución, `pull` aceptaba cualquier modelo, `.gitignore` no cubría modelos/conversaciones, y el `import` de langchain estaba roto en el entorno.
 - Repetir: `bandit -r src app.py -ll`, `pip-audit`, `python -m unittest discover -s tests`.
+- **Baseline de `detect-secrets`**: contiene 9 entradas, todas falsos positivos comprobados a mano (los SHA-256 y commits públicos de `src/images/models.py`, cadenas hexadecimales de alta entropía). Si aparece alguna entrada nueva, revísala antes de aceptarla.
+- Se retiraron del entorno los paquetes que ya no se usaban (`langchain`, `langgraph`, `langsmith`) para reducir la superficie de ataque.
 
 ## Límites conocidos (lo que NO se garantiza)
 - **El sandbox no es una frontera absoluta.** Un gancho de auditoría de Python no cubre código nativo ni todos los rodeos posibles; por eso solo se ejecuta código que ves y apruebas. Para código realmente hostil haría falta una máquina virtual.
