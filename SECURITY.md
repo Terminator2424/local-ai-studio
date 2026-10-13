@@ -1,4 +1,4 @@
-# Seguridad
+﻿# Seguridad
 
 Local AI Studio procesa documentos que pueden ser confidenciales y que **no son de confianza**, y lo hace con modelos de lenguaje que
 pueden equivocarse o ser manipulados por el texto que leen. Este documento describe qué se protege, cómo, cómo se ha comprobado y,
@@ -60,7 +60,7 @@ La revisión técnica completa de la estructura, la calidad, las pruebas y la ro
 - **Los datos de usuario están en claro en disco**: `conversations/` (chats, índice de documentos, registro de acciones), `resumenes/`, `outputs/`. Cifra el disco (BitLocker) si el equipo se comparte.
 - **Un modelo puede equivocarse.** Las comprobaciones deterministas reducen mucho los errores de cifras, fórmulas y citas, pero no sustituyen la revisión humana de un documento crítico.
 - **PyTorch/diffusers/transformers** son dependencias grandes; mantenlas actualizadas. El tercer lector de fórmulas opcional (`pix2tex`, desactivado) descarga pesos con `pickle` de la red: no lo actives con redes no fiables.
-- Los rangos de `requirements.txt` aceptan parches menores; `requirements-lock.txt` guarda el entorno exacto con el que se probó. Usa `pip-audit` periódicamente.
+- Los rangos de `requirements.txt` aceptan parches menores; `docs/entorno-probado.txt` guarda el entorno exacto con el que se probó. Usa `pip-audit` periódicamente.
 - Sin cifrado de la comunicación con Ollama (es local: bucle de loopback).
 
 ## Lo que debes hacer tú
