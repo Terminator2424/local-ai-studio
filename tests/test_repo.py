@@ -72,6 +72,22 @@ class TestProyecto(unittest.TestCase):
             self.assertNotIn("call venv", text, name)       # «call venv\Scripts\activate.bat»
             self.assertIn("venv\\Scripts\\python.exe", text, name)
 
+    def test_los_yaml_del_repositorio_son_validos(self):
+        """Un YAML roto en .github/ hace que GitHub no arranque la CI ni diga por qué (0 trabajos): se valida aquí."""
+        import yaml
+        files = list((ROOT / ".github").rglob("*.yml")) + [ROOT / "config.example.yaml", ROOT / ".pre-commit-config.yaml"]
+        self.assertTrue(files)
+        for f in files:
+            with self.subTest(archivo=str(f.relative_to(ROOT))):
+                self.assertIsInstance(yaml.safe_load(f.read_text(encoding="utf-8")), dict)
+
+    def test_la_ci_ejecuta_los_mismos_pasos_que_check_bat(self):
+        import yaml
+        ci = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
+        runs = " ".join(str(s.get("run", "")) for s in ci["jobs"]["calidad"]["steps"])
+        for comando in ("ruff check", "mypy local_ai_studio", "unittest discover", "bandit"):
+            self.assertIn(comando, runs, comando)
+
 
 if __name__ == "__main__":
     unittest.main()

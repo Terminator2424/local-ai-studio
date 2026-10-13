@@ -24,7 +24,7 @@ jobs:
             requirements.txt
             requirements-dev.txt
 
-      - name: Instalar dependencias (sin PyTorch: ninguna prueba necesita GPU ni Ollama)
+      - name: "Instalar dependencias (sin PyTorch, ninguna prueba necesita GPU ni Ollama)"
         run: python -m pip install -r requirements-dev.txt
 
       - name: Estilo y errores (ruff)
