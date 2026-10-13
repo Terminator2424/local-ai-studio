@@ -353,5 +353,38 @@ class TestBucleDelAsistente(unittest.TestCase):
             self.assertIn("tool", e)
 
 
+class TestLoQueSeApruebaEsLoQueSeEjecuta(unittest.TestCase):
+    """La ventana de permiso debe mostrar la acción ENTERA: nada recortado, saltos de línea reales."""
+
+    def test_resumen_muestra_el_codigo_completo_con_saltos_de_linea(self):
+        code = "import math\nfor i in range(3):\n    print(i * math.pi)  # " + "x" * 400
+        s = TOOLS["ejecutar_python"].summary({"codigo": code})
+        self.assertIn(code, s)                                  # entero, sin «… (+N caracteres)»
+        self.assertNotIn("caracteres)", s)
+        self.assertIn("\n    print(i * math.pi)", s)             # saltos de línea reales
+        self.assertTrue(s.startswith("Herramienta: ejecutar_python"))
+
+    def test_resumen_de_escritura_muestra_ruta_y_contenido_enteros(self):
+        s = TOOLS["escribir_archivo"].summary({"ruta": "plan.txt", "contenido": "línea 1\nlínea 2", "sobrescribir": False})
+        self.assertIn("ruta: 'plan.txt'", s)
+        self.assertIn("línea 1\nlínea 2", s)
+        self.assertIn("sobrescribir: False", s)
+
+    def test_lo_demasiado_largo_para_revisar_se_rechaza(self):
+        from src.agent.tools import MAX_REVIEW
+        TOOLS["ejecutar_python"].check_args({"codigo": "x" * MAX_REVIEW})
+        with self.assertRaises(ToolDenied):
+            TOOLS["ejecutar_python"].check_args({"codigo": "x" * (MAX_REVIEW + 1)})
+        with self.assertRaises(ToolDenied):
+            TOOLS["escribir_archivo"].check_args({"ruta": "a.txt", "contenido": "y" * (MAX_REVIEW + 1)})
+
+    def test_las_lecturas_no_tienen_ese_limite_de_revision(self):
+        TOOLS["leer_archivo"].check_args({"ruta": "a" * 300})            # no cambia nada: no hace falta revisarla
+
+    def test_el_codigo_mostrado_no_oculta_lo_peligroso_al_final(self):
+        code = "print('inofensivo')\n" + "\n" * 60 + "import os; os.system('del /q *')"
+        self.assertIn("os.system('del /q *')", TOOLS["ejecutar_python"].summary({"codigo": code}))
+
+
 if __name__ == "__main__":
     unittest.main()

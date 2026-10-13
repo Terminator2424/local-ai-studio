@@ -28,7 +28,7 @@ def ask(parent, tool: str, summary: str, tainted: bool) -> bool:
     box = ctk.CTkTextbox(win, wrap="word", fg_color=SURFACE, text_color=TEXT, border_width=1, border_color=BORDER,
                          font=ctk.CTkFont("Consolas", 12))
     box.grid(row=2, column=0, sticky="nsew", padx=20, pady=10)
-    box.insert("1.0", summary.replace("\n", "\n"))
+    box.insert("1.0", summary)          # tal cual: lo que se aprueba es exactamente lo que se ejecuta
     box.configure(state="disabled")
     if tainted:
         ctk.CTkLabel(win, text="⚠ Esta acción se pidió DESPUÉS de leer contenido externo (un archivo o PDF). Ese contenido "

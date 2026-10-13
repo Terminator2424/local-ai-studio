@@ -19,6 +19,7 @@ from .policy import MAX_READ, MAX_WRITE, Policy, ToolDenied
 from .sandbox import run_python
 
 RISK_AUTO = {"leer", "puro"}
+MAX_REVIEW = 20_000      # lo que cambia algo se muestra ENTERO al usuario: si no cabe para revisarlo, no se ejecuta
 _NEVER_OPEN = {".exe", ".bat", ".cmd", ".com", ".ps1", ".psm1", ".vbs", ".vbe", ".js", ".jse", ".wsf", ".wsh", ".msi", ".msp",
                ".scr", ".lnk", ".pif", ".jar", ".hta", ".reg", ".dll", ".sys", ".cpl", ".msc", ".appx", ".py", ".pyw"}
 _OPENABLE = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".txt", ".md", ".csv", ".docx", ".xlsx", ".pptx", ".json"}
@@ -57,6 +58,9 @@ class Tool:
                 raise ToolDenied(f"El argumento «{k}» debe ser de tipo {spec['type']}.")
             if isinstance(v, str) and len(v) > MAX_WRITE:
                 raise ToolDenied(f"El argumento «{k}» es demasiado largo.")
+            if isinstance(v, str) and not self.auto and len(v) > MAX_REVIEW:
+                raise ToolDenied(f"El argumento «{k}» tiene {len(v)} caracteres: es demasiado largo para que lo revises "
+                                 f"antes de aprobarlo (máximo {MAX_REVIEW}). Pide una versión más corta.")
             out[k] = v
         extra = set(args) - set(self.properties)
         if extra:
@@ -64,13 +68,15 @@ class Tool:
         return out
 
     def summary(self, args: dict) -> str:
-        """Texto para mostrar al usuario ANTES de aprobar: la acción exacta, sin adornos."""
-        return f"{self.name}({', '.join(f'{k}={_short(v)}' for k, v in args.items())})"
-
-
-def _short(v, n=120) -> str:
-    s = repr(v)
-    return s if len(s) <= n else s[:n] + f"… (+{len(s) - n} caracteres)"
+        """Texto para mostrar al usuario ANTES de aprobar: la acción exacta y COMPLETA, con saltos de línea reales.
+        Nunca se recorta: lo que se aprueba es lo que se ejecuta."""
+        lines = [f"Herramienta: {self.name}"]
+        for k, v in args.items():
+            if isinstance(v, str) and ("\n" in v or len(v) > 80):
+                lines += [f"\n{k}:", v]
+            else:
+                lines.append(f"{k}: {v!r}")
+        return "\n".join(lines)
 
 
 # ------------------------------------------------------------------- implementaciones
