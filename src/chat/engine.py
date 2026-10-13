@@ -11,21 +11,40 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.utils import Cancelled, get_client
-from .store import Message
+from .store import DEFAULT_MODEL, Message  # noqa: F401  (DEFAULT_MODEL se reexporta para la interfaz)
 
 log = logging.getLogger("resumidor")
 
-# Modelos ofrecidos en el selector. La nota dice para qué sirve cada uno con 8 GB de VRAM (cuantización Q4_K_M).
-CHAT_MODELS = {
-    "qwen2.5:7b": "General y muy bueno en español",
-    "llama3.1:8b": "Razonamiento general",
-    "gemma2:9b": "Buena calidad; justo de VRAM (se reparte con la CPU)",
-    "mistral:7b": "Ligero y rápido",
-    "qwen2.5-coder:7b": "Código",
-    "qwen2.5vl:7b": "Visión: analiza imágenes",
+# Modelos ofrecidos en el selector: id de Ollama -> (nombre, para qué sirve en una línea, detalle).
+# Los tamaños son los de la cuantización Q4_K_M que descarga Ollama; el detalle supone una GPU de 8 GB.
+MODEL_INFO = {
+    "llama3.1:8b": ("Llama 3.1 8B", "general (por defecto)",
+                    "Meta · 4,9 GB · razona bien, sigue instrucciones y admite herramientas. Buen equilibrio entre calidad y velocidad."),
+    "qwen2.5:7b": ("Qwen 2.5 7B", "español y datos",
+                   "Alibaba · 4,7 GB · el más sólido en español y en tablas/datos; admite herramientas."),
+    "gemma2:9b": ("Gemma 2 9B", "redacción cuidada, más lento",
+                  "Google · 5,4 GB · escribe muy bien, pero en 8 GB de VRAM se reparte con la CPU. No admite herramientas."),
+    "mistral:7b": ("Mistral 7B", "ligero y rápido",
+                   "Mistral AI · 4,4 GB · el más rápido de la lista; razona menos que los demás; admite herramientas."),
+    "qwen2.5-coder:7b": ("Qwen 2.5 Coder 7B", "programación",
+                         "Alibaba · 4,7 GB · especializado en escribir, explicar y depurar código; admite herramientas."),
+    "qwen2.5vl:7b": ("Qwen 2.5 VL 7B", "visión: lee imágenes",
+                     "Alibaba · 6,0 GB · el único que entiende imágenes (fotos, capturas, PDF escaneados). No admite herramientas."),
 }
+CHAT_MODELS = {k: v[1] for k, v in MODEL_INFO.items()}      # id -> nota corta (compatibilidad)
 # Los que admiten llamadas a herramientas en Ollama (gemma2 y los de visión no)
 TOOL_MODELS = {"qwen2.5:7b", "llama3.1:8b", "qwen2.5-coder:7b", "mistral:7b"}
+
+
+def model_label(model: str) -> str:
+    """Texto del selector: «Llama 3.1 8B — uso general (predeterminado)»."""
+    info = MODEL_INFO.get(model)
+    return f"{info[0]} — {info[1]}" if info else model
+
+
+def model_detail(model: str) -> str:
+    info = MODEL_INFO.get(model)
+    return info[2] if info else ""
 EXTRA_PULLS = {"nomic-embed-text"}
 ALLOWED_PULLS = set(CHAT_MODELS) | EXTRA_PULLS     # lista cerrada: ningún texto externo puede añadir modelos
 DEFAULT_SYSTEM = "Eres un asistente útil y conciso. Responde en el idioma del usuario. Si no estás seguro de un dato, dilo."
@@ -99,12 +118,22 @@ def _read(path: str) -> bytes:
 class ChatEngine:
     def __init__(self, cfg: dict):
         self.cfg = cfg
+        self._installed: tuple[float, set[str]] | None = None
 
-    def installed(self) -> set[str]:
+    def installed(self, max_age: float = 10.0) -> set[str]:
+        """Modelos instalados en Ollama. Se recuerda `max_age` segundos para no consultar al servidor en cada clic."""
+        now = time.monotonic()
+        if self._installed is not None and now - self._installed[0] < max_age:
+            return set(self._installed[1])
         try:
-            return {m.model for m in get_client(self.cfg).list().models}
+            found = {m.model for m in get_client(self.cfg).list().models}
         except Exception:  # noqa: BLE001
-            return set()
+            return set()                    # sin respuesta: no se recuerda, se reintentará en la siguiente consulta
+        self._installed = (now, found)
+        return set(found)
+
+    def forget_installed(self) -> None:
+        self._installed = None
 
     def stream(self, model: str, messages: list[dict], params: Params, cancel: threading.Event | None = None,
                on_text=None, keep_alive: str | int = "5m") -> Reply:
@@ -150,4 +179,5 @@ class ChatEngine:
             frac = (done / total) if total and done is not None else None
             if on_progress:
                 on_progress(frac, part.status or "")
+        self.forget_installed()
         log.info("Modelo %s descargado", model)

@@ -17,12 +17,13 @@ import customtkinter as ctk
 from ..chat import render
 from ..agent.loop import Agent
 from ..agent.policy import WORKSPACE, Policy, ToolDenied, validate_new_root
-from ..chat.engine import CHAT_MODELS, TOOL_MODELS, ChatEngine, Params, Reply, build_messages, est_tokens, is_vision
+from ..chat.engine import CHAT_MODELS, DEFAULT_MODEL, TOOL_MODELS, ChatEngine, Params, Reply, build_messages, est_tokens, is_vision
 from ..chat.store import ChatStore, load_prefs, save_prefs, title_from
 from ..core.utils import Cancelled, safe_name
 from . import confirm_dialog
+from .model_picker import ModelPicker
 from .theme import (ACCENT, BORDER, ERR, FONT, LOG_COLORS, MUTED, SURFACE, TEXT, WARN, font, ghost_button, label,
-                    option_menu, primary_button, slider)
+                    primary_button, slider)
 
 try:
     from tkinterweb import HtmlFrame
@@ -164,24 +165,24 @@ class ChatPage(ctk.CTkFrame):
 
         head = ctk.CTkFrame(main, fg_color="transparent")
         head.grid(row=0, column=0, sticky="ew")
-        head.grid_columnconfigure(3, weight=1)
-        self.model_var = ctk.StringVar(value=self.prefs["model"] if self.prefs["model"] in CHAT_MODELS else "qwen2.5:7b")
-        self.model_menu = option_menu(head, list(CHAT_MODELS), self.model_var, self._on_model, width=190)
-        self.model_menu.grid(row=0, column=0)
-        self.model_note = label(head, "", 12, muted=True)
-        self.model_note.grid(row=1, column=0, columnspan=3, sticky="w", padx=4, pady=(2, 0))
+        head.grid_columnconfigure(1, weight=1)
+        self.picker = ModelPicker(head, list(CHAT_MODELS), self.prefs["model"], self._on_model, width=320, wrap=420)
+        self.picker.grid(row=0, column=0, sticky="nw")
+        self.model_var = self.picker.var            # mismo get()/set() que una StringVar, pero con el id del modelo
+        actions = ctk.CTkFrame(head, fg_color="transparent")        # dos filas: caben aunque la ventana sea estrecha
+        actions.grid(row=0, column=2, sticky="ne")
+        ghost_button(actions, "Regenerar", self._regenerate, width=104, height=30).grid(row=0, column=0, padx=(0, 6), pady=(2, 4))
+        ghost_button(actions, "Exportar .md", self._export, width=116, height=30).grid(row=0, column=1, pady=(2, 4))
         self.tools_var = ctk.BooleanVar(value=False)
-        ctk.CTkSwitch(head, text="Herramientas", variable=self.tools_var, command=self._on_tools, progress_color=ACCENT,
-                      font=font(12), text_color=TEXT).grid(row=0, column=3, sticky="e", padx=8)
+        ctk.CTkSwitch(actions, text="Herramientas", variable=self.tools_var, command=self._on_tools, progress_color=ACCENT,
+                      font=font(12), text_color=TEXT, width=104).grid(row=1, column=0, sticky="w", padx=(2, 6))
+        self.params_btn = ctk.CTkButton(actions, text="Parámetros  ▸", width=116, height=30, fg_color="transparent", hover_color=SURFACE,
+                                        text_color=MUTED, font=font(12), command=self._toggle_params)
+        self.params_btn.grid(row=1, column=1)
         self.tools_bar = ctk.CTkFrame(head, fg_color=SURFACE, corner_radius=8)
         self.tools_lbl = ctk.CTkLabel(self.tools_bar, text="", justify="left", anchor="w", font=font(11), text_color=MUTED)
         self.tools_lbl.pack(side="left", padx=10, pady=6)
         ghost_button(self.tools_bar, "Añadir carpeta de lectura…", self._add_root, width=190, height=26).pack(side="right", padx=6)
-        self.params_btn = ctk.CTkButton(head, text="Parámetros  ▸", width=110, height=30, fg_color="transparent", hover_color=SURFACE,
-                                        text_color=MUTED, font=font(12), command=self._toggle_params)
-        self.params_btn.grid(row=0, column=2)
-        ghost_button(head, "Regenerar", self._regenerate, width=92, height=30).grid(row=0, column=4, padx=(0, 8))
-        ghost_button(head, "Exportar .md", self._export, width=110, height=30).grid(row=0, column=5)
 
         self.params_box = ctk.CTkFrame(main, fg_color=SURFACE, corner_radius=10, border_width=1, border_color=BORDER)
         self._build_params(self.params_box)
@@ -304,10 +305,7 @@ class ChatPage(ctk.CTkFrame):
     # -------------------------------------------------------------- modelo
     def _on_model(self, model: str):
         installed = self.engine.installed()
-        note = CHAT_MODELS.get(model, "")
-        if installed and model not in installed:
-            note = "no instalado: se descargará al enviar"
-        self.model_note.configure(text=note)
+        self.picker.refresh_note(missing=bool(installed) and model not in installed)
         self.attach_btn.configure(state="normal" if is_vision(model) else "disabled")
         if not is_vision(model) and self.attachments:
             self.attachments.clear()
@@ -509,7 +507,7 @@ class ChatPage(ctk.CTkFrame):
             log.exception("Error del asistente con herramientas")
             msg = f"{type(exc).__name__}: {exc}"
             if "does not support tools" in str(exc):
-                msg = f"El modelo {model} no admite herramientas. Usa qwen2.5:7b o llama3.1:8b."
+                msg = f"El modelo {model} no admite herramientas. Usa Llama 3.1, Qwen 2.5, Qwen Coder o Mistral."
             self.q.put(("error", msg))
 
     def _confirm_from_worker(self, tool: str, summary: str, tainted: bool) -> bool:
@@ -532,9 +530,9 @@ class ChatPage(ctk.CTkFrame):
     def _on_tools(self):
         if self.tools_var.get():
             if self.model_var.get() not in TOOL_MODELS:
-                self.model_var.set("qwen2.5:7b")
-                self._on_model("qwen2.5:7b")
-            self.tools_bar.grid(row=2, column=0, columnspan=6, sticky="ew", pady=(8, 0))
+                self.model_var.set(DEFAULT_MODEL)
+                self._on_model(DEFAULT_MODEL)
+            self.tools_bar.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(8, 0))
             self._refresh_tools_label()
         else:
             self.tools_bar.grid_forget()

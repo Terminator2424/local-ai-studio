@@ -9,12 +9,13 @@ from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
-from ..chat.engine import CHAT_MODELS, ChatEngine, Params
+from ..chat.engine import CHAT_MODELS, DEFAULT_MODEL, ChatEngine, Params
 from ..core.utils import Cancelled
 from ..rag import ask
 from ..rag.index import EMBED_MODEL, DocIndex
 from .htmlview import MdView
-from .theme import ACCENT, BORDER, MUTED, OK, SURFACE, TEXT, WARN, font, ghost_button, label, option_menu, primary_button
+from .model_picker import ModelPicker
+from .theme import ACCENT, BORDER, MUTED, OK, SURFACE, TEXT, WARN, font, ghost_button, label, primary_button
 
 log = logging.getLogger("resumidor")
 
@@ -31,6 +32,7 @@ class DocsPage(ctk.CTkFrame):
         self.q: queue.Queue = queue.Queue()
         self.cancel = threading.Event()
         self.working = False
+        self.mode: str | None = None            # "index" | "ask" mientras hay trabajo en curso
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
         self._build_left()
@@ -92,20 +94,23 @@ class DocsPage(ctk.CTkFrame):
         self.question.bind("<Return>", self._on_enter)
         side = ctk.CTkFrame(top, fg_color="transparent")
         side.grid(row=0, column=1, padx=(10, 0), sticky="ns")
-        self.model_var = ctk.StringVar(value="qwen2.5:7b")
-        option_menu(side, [m for m in CHAT_MODELS if "vl" not in m], self.model_var, None, width=170).pack(pady=(0, 6))
-        self.ask_btn = primary_button(side, "Preguntar", self._ask, width=170, height=34)
-        self.ask_btn.pack()
+        self.picker = ModelPicker(side, [m for m in CHAT_MODELS if "vl" not in m], DEFAULT_MODEL, width=300, wrap=300)
+        self.picker.pack(pady=(0, 6), anchor="e")
+        self.model_var = self.picker.var
+        self.ask_btn = primary_button(side, "Preguntar", self._ask, width=300, height=34)
+        self.ask_btn.pack(anchor="e")
 
     def _on_enter(self, event):
         if event.state & 0x1:
             return None
-        self._ask()
+        if not self.working:        # una tecla nunca cancela: solo el botón «Detener»
+            self._ask()
         return "break"
 
     def shortcut(self, name: str):
         if name == "run":
-            self._ask()
+            if not self.working:
+                self._ask()
         elif name == "open":
             self._add_files()
 
@@ -123,7 +128,14 @@ class DocsPage(ctk.CTkFrame):
             label(f, f"{r['pages']} págs. · {r['chunks']} fragmentos{warn}", 11, muted=True).pack(anchor="w", padx=10, pady=(0, 6))
             ctk.CTkButton(f, text="×", width=22, height=22, fg_color="transparent", hover_color=BORDER, text_color=MUTED,
                           command=lambda i=r["id"]: self._remove(i)).place(relx=1.0, x=-6, y=4, anchor="ne")
-        have = EMBED_MODEL in self.engine.installed() or f"{EMBED_MODEL}:latest" in self.engine.installed()
+        self.emb_lbl.configure(text="Comprobando el modelo de búsqueda…", text_color=MUTED)
+        threading.Thread(target=self._check_embeddings, daemon=True).start()     # Ollama puede tardar: no bloquea la ventana
+
+    def _check_embeddings(self):
+        names = self.engine.installed()
+        self.q.put(("emb", EMBED_MODEL in names or f"{EMBED_MODEL}:latest" in names))
+
+    def _show_embeddings(self, have: bool):
         self.emb_lbl.configure(text=(f"Búsqueda por sentido: activa ({EMBED_MODEL})." if have else
                                      f"Solo búsqueda por palabras. Para buscar también por sentido instala «{EMBED_MODEL}» en Ajustes."),
                                text_color=OK if have else WARN)
@@ -153,6 +165,7 @@ class DocsPage(ctk.CTkFrame):
         if self.working:
             return
         self.working = True
+        self.mode = "index"
         self.cancel.clear()
         self.status.configure(text="Indexando…")
         threading.Thread(target=self._index_worker, args=(paths,), daemon=True).start()
@@ -182,7 +195,10 @@ class DocsPage(ctk.CTkFrame):
     # ------------------------------------------------------------ preguntar
     def _ask(self):
         if self.working:
-            self.cancel.set()
+            if self.mode == "ask":
+                self.cancel.set()
+            else:
+                self.status.configure(text="Espera a que termine el indexado para preguntar.")
             return
         q = self.question.get("1.0", "end").strip()
         if not q:
@@ -191,6 +207,7 @@ class DocsPage(ctk.CTkFrame):
             messagebox.showinfo("Sin documentos", "Primero indexa algún PDF.")
             return
         self.working = True
+        self.mode = "ask"
         self.cancel.clear()
         self.ask_btn.configure(text="Detener")
         self.status.configure(text="Buscando en tus documentos…")
@@ -232,13 +249,17 @@ class DocsPage(ctk.CTkFrame):
                     self.status.configure(text=msg[1])
                 elif kind == "log":
                     self.status.configure(text=msg[1][:120])
+                elif kind == "emb":
+                    self._show_embeddings(msg[1])
                 elif kind == "index_done":
                     self.working = False
+                    self.mode = None
                     self.prog.set(1)
                     self.status.configure(text=msg[1])
                     self._refresh()
                 elif kind == "answer":
                     self.working = False
+                    self.mode = None
                     self.prog.stop()
                     self.prog.configure(mode="determinate")
                     self.prog.set(0)

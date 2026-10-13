@@ -89,6 +89,17 @@ def enforce_local_host(host: str) -> str:
     return host
 
 
+def fast_loopback(host: str) -> str:
+    """«localhost» → «127.0.0.1». En Windows «localhost» prueba antes IPv6 (::1), donde Ollama no escucha, y cada
+    conexión pierde ~2 s esperando; con la IP directa la consulta tarda ~0,2 s. Sigue siendo loopback."""
+    from urllib.parse import urlparse, urlunparse
+    parsed = urlparse(host if "://" in host else f"http://{host}")
+    if parsed.hostname != "localhost":
+        return host if "://" in host else f"http://{host}"
+    netloc = "127.0.0.1" + (f":{parsed.port}" if parsed.port else "")
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
 def load_config(auto_hardware: bool = True) -> dict:
     """Carga config.yaml (si no existe, se crea desde config.example.yaml) y aplica el ajuste automático al hardware."""
     if not CONFIG_PATH.exists() and CONFIG_EXAMPLE.exists():
@@ -175,9 +186,18 @@ def detect_language(text: str) -> str:
 
 
 # --------------------------------------------------------------- Ollama
+_CLIENTS: dict = {}
+_CLIENTS_LOCK = threading.Lock()
+
+
 def get_client(cfg: dict):
+    """Cliente de Ollama (uno por host, reutilizado: crear uno cuesta ~0,3 s y el cliente httpx admite varios hilos)."""
     import ollama
-    return ollama.Client(host=enforce_local_host(cfg["ollama"].get("host", "http://localhost:11434")))
+    host = fast_loopback(enforce_local_host(cfg["ollama"].get("host", "http://localhost:11434")))
+    with _CLIENTS_LOCK:
+        if host not in _CLIENTS:
+            _CLIENTS[host] = ollama.Client(host=host)
+        return _CLIENTS[host]
 
 
 def check_ollama(cfg: dict, need_vision: bool = True) -> None:

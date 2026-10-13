@@ -156,8 +156,8 @@ def _fit_layers(model: str, ctx: int, free_gb: float) -> int | None:
 def ollama_has_models_loaded(cfg: dict) -> bool:
     """Si Ollama ya tiene modelos en VRAM, la VRAM «libre» que reporta la GPU no es representativa."""
     try:
-        import ollama
-        return bool(ollama.Client(host=cfg["ollama"]["host"]).ps().models)
+        from .utils import get_client
+        return bool(get_client(cfg).ps().models)
     except Exception:  # noqa: BLE001
         return False
 
@@ -276,9 +276,8 @@ def describe(cfg: dict) -> str:
 
 def installed_models(cfg: dict) -> set[str]:
     try:
-        import ollama
-        client = ollama.Client(host=cfg["ollama"]["host"])
-        return {m.model for m in client.list().models}
+        from .utils import get_client
+        return {m.model for m in get_client(cfg).list().models}
     except Exception:  # noqa: BLE001
         return set()
 

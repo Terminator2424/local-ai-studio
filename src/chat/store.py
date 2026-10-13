@@ -153,7 +153,9 @@ def title_from(text: str, limit: int = 48) -> str:
 
 # --------------------------------------------------------------- preferencias
 PREFS_PATH = CONV_DIR / "prefs.json"
-DEFAULT_PREFS = {"model": "qwen2.5:7b", "temperature": 0.7, "top_p": 0.9, "max_tokens": 1024, "num_ctx": 8192,
+DEFAULT_MODEL = "llama3.1:8b"
+PREFS_VERSION = 2       # v2: el modelo predeterminado pasó a llama3.1:8b (las preferencias antiguas se actualizan una vez)
+DEFAULT_PREFS = {"prefs_version": PREFS_VERSION, "model": DEFAULT_MODEL, "temperature": 0.7, "top_p": 0.9, "max_tokens": 1024, "num_ctx": 8192,
                  "read_roots": [],
                  "system_prompt": "Eres un asistente útil y conciso. Responde en el idioma del usuario. "
                                   "Si no estás seguro de un dato, dilo."}
@@ -168,7 +170,8 @@ def load_prefs(path: Path = PREFS_PATH) -> dict:
         return prefs
     if not isinstance(data, dict):
         return prefs
-    limits = {"temperature": (0.0, 2.0), "top_p": (0.0, 1.0), "max_tokens": (16, 32768), "num_ctx": (512, 131072)}
+    limits = {"temperature": (0.0, 2.0), "top_p": (0.0, 1.0), "max_tokens": (16, 32768), "num_ctx": (512, 131072),
+              "prefs_version": (0, 1000)}
     for k, default in DEFAULT_PREFS.items():
         v = data.get(k)
         if isinstance(default, list):
@@ -181,6 +184,9 @@ def load_prefs(path: Path = PREFS_PATH) -> dict:
             lo, hi = limits[k]
             if lo <= v <= hi:
                 prefs[k] = float(v) if isinstance(default, float) else int(v)
+    if data.get("prefs_version") != PREFS_VERSION:          # guardadas por una versión anterior
+        prefs["model"] = DEFAULT_MODEL
+    prefs["prefs_version"] = PREFS_VERSION
     return prefs
 
 

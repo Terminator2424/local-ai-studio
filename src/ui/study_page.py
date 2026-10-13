@@ -10,12 +10,13 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 
 from ..agent.sandbox import run_python
-from ..chat.engine import CHAT_MODELS, ChatEngine, Params
+from ..chat.engine import CHAT_MODELS, DEFAULT_MODEL, ChatEngine, Params
 from ..core.utils import Cancelled
 from ..rag.index import DocIndex
 from ..study import check, tasks
 from . import confirm_dialog
 from .htmlview import MdView
+from .model_picker import ModelPicker
 from .theme import ACCENT, BORDER, MUTED, SURFACE, TEXT, font, ghost_button, label, option_menu, primary_button
 
 log = logging.getLogger("resumidor")
@@ -89,8 +90,9 @@ class StudyPage(ctk.CTkFrame):
         self.exercise = ctk.CTkTextbox(left, height=96, wrap="word", fg_color=SURFACE, text_color=TEXT, border_width=1,
                                        border_color=BORDER, font=font(12))
         label(left, "Modelo", 12, muted=True).pack(anchor="w", padx=6, pady=(14, 2))
-        self.model_var = ctk.StringVar(value="qwen2.5:7b")
-        option_menu(left, [m for m in CHAT_MODELS if "vl" not in m], self.model_var, None).pack(fill="x", padx=6)
+        self.picker = ModelPicker(left, [m for m in CHAT_MODELS if "vl" not in m], DEFAULT_MODEL, width=372, wrap=372)
+        self.picker.pack(fill="x", padx=6)
+        self.model_var = self.picker.var
         self.go_btn = primary_button(left, "Generar", self._go, height=42)
         self.go_btn.pack(fill="x", padx=6, pady=(18, 4))
         self.prog = ctk.CTkProgressBar(left, height=5, progress_color=ACCENT, fg_color=BORDER, mode="indeterminate")
