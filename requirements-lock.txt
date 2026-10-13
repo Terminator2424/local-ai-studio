@@ -2,7 +2,7 @@
 # para instalar usa requirements.txt. torch viene de https://download.pytorch.org/whl/cu128 (build +cu128).
 accelerate==1.15.0
 albucore==0.0.23
-albumentations==1.4.24
+albumentations==2.0.8
 altgraph==0.17.5
 annotated-doc==0.0.5
 annotated-types==0.8.0
