@@ -1,4 +1,4 @@
-﻿# Entorno EXACTO con el que se probó Local AI Studio (pip freeze, Python 3.12, Windows 11). Solo de referencia (Dependabot no lo mira, a propósito: incluye paquetes de desarrollo que no son dependencias de la app):
+# Entorno EXACTO con el que se probó Local AI Studio (pip freeze, Python 3.12, Windows 11). Solo de referencia (Dependabot no lo mira, a propósito: incluye paquetes de desarrollo que no son dependencias de la app):
 # para instalar usa requirements.txt. torch viene de https://download.pytorch.org/whl/cu128 (build +cu128).
 accelerate==1.15.0
 albucore==0.0.23
@@ -136,7 +136,7 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 tzdata==2026.5
 urllib3==2.8.0
-uuid_utils==0.17.1
+uuid_utils==1.0.0
 virtualenv==21.14.7
 vulture==2.16
 websockets==16.1.1
