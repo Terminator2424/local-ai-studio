@@ -28,6 +28,7 @@ modo oscuro opcional, acento rojo.
 | **Estudiar** | Tarjetas (CSV para Anki), preguntas de práctica y ejercicios paso a paso con cada igualdad marcada ✓ / ✗ / ⚠. Ejecuta el código en un sandbox. |
 | **Generar imagen** | Stable Diffusion 1.5 y SDXL en fp16, lote 1–4, semilla, guardar, copiar, enviar al editor. |
 | **Editar imagen** | Recorte, giros, tamaño y filtros con vista previa; guarda PNG, JPEG o WebP. |
+ Transcribir Audio: Convierte videos o audios (MP4, MP3, WAV) a texto en tiempo real 100% local usando faster-whisper.
 | **Ajustes** | Diagnóstico de GPU/VRAM/PyTorch, modelos, almacenamiento con limpieza segura y estado de la barrera de red. |
 
 El inventario completo, con límites, está en **[docs/CAPACIDADES.md](docs/CAPACIDADES.md)**.
