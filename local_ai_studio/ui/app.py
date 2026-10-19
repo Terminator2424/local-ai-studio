@@ -46,6 +46,7 @@ PAGES = {
     "study": ("Estudiar", "study_page", "StudyPage"),
     "gen": ("Generar imagen", "gen_page", "GenPage"),
     "edit": ("Editar imagen", "edit_page", "EditPage"),
+    "audio": ("Transcribir Audio", "audio_page", "AudioPage"),
     "settings": ("Ajustes", "settings_page", "SettingsPage"),
 }
 
