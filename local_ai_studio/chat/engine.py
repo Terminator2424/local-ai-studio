@@ -153,13 +153,24 @@ class ChatEngine:
         self._installed: tuple[float, set[str]] | None = None
 
     def installed(self, max_age: float = 10.0) -> set[str]:
+        """Modelos instalados en Ollama. Se recuerda `max_age` segundos para no consultar al servidor en cada clic."""
         now = time.monotonic()
         if self._installed is not None and now - self._installed[0] < max_age:
             return set(self._installed[1])
         try:
-            found = {m.model for m in get_client(self.cfg).list().models}
-        except Exception:
-            return set()
+            # Obtenemos la lista de modelos de Ollama
+            found_raw = {m.model for m in get_client(self.cfg).list().models}
+            
+            # FIX: Si un modelo termina en ":latest", lo agregamos también sin el ":latest"
+            # para que coincida con los nombres de nuestra lista MODEL_INFO
+            found = set(found_raw)
+            for m in found_raw:
+                if m.endswith(":latest"):
+                    found.add(m[:-7]) # Quita los 7 caracteres de ":latest"
+                    
+        except Exception:  # noqa: BLE001
+            return set()                    # sin respuesta: no se recuerda, se reintentará en la siguiente consulta
+            
         self._installed = (now, found)
         return set(found)
 
