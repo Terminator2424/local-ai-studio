@@ -1,10 +1,8 @@
-"""Motor del chat: conversación con Ollama en streaming, con parámetros, imágenes y estadísticas de velocidad.
-
-Solo habla con Ollama en 127.0.0.1 (get_client aplica enforce_local_host): ningún prompt ni imagen sale del equipo.
-"""
+"""Motor del chat: conversación con Ollama en streaming, con parámetros, imágenes y estadísticas de velocidad."""
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -14,12 +12,41 @@ from typing import Any
 from ..core.errors import Cancelled
 from ..core.ollama_client import get_client
 from .roles import DEFAULT_ROLE, ROLES
-from .store import DEFAULT_MODEL, Message  # noqa: F401  (DEFAULT_MODEL se reexporta para la interfaz)
+from .store import DEFAULT_MODEL, Message  # noqa: F401
 
 log = logging.getLogger(__name__)
 
-# Modelos ofrecidos en el selector: id de Ollama -> (nombre, para qué sirve en una línea, detalle).
-# Los tamaños son los de la cuantización Q4_K_M que descarga Ollama; el detalle supone una GPU de 8 GB.
+# --- SEGURIDAD: Patrones de Inyección de Prompt ---
+PROMPT_INJECTION_PATTERNS = [
+    r"(?i)ignore\s+(?:the\s+)?(?:previous\s+)?(?:instructions|prompt|rules?)",
+    r"(?i)disregard\s+(?:the\s+)?(?:previous\s+)?(?:instructions|prompt|rules?)",
+    r"(?i)forget\s+(?:everything\s+|all\s+|the\s+)?(?:previous\s+)?(?:instructions|prompt|rules?)",
+    r"(?i)you\s+are\s+now\s+(?:in\s+)?(?:developer\s+|debug\s+|admin\s+|root\s+|system\s+)?mode",
+    r"(?i)system\s*:\s*",
+    r"(?i)assistant\s*:\s*",
+    r"(?i)you\s+must\s+ignore\s+",
+    r"(?i)from\s+now\s+on\s+",
+    r"(?i)new\s+instruction\s*:",
+    r"(?i)override\s+(?:previous\s+)?instructions",
+    r"(?i)ignora\s+(?:todas\s+)?(?:las\s+)?instrucciones",
+]
+
+def _is_prompt_injection_attempt(text: str) -> bool:
+    if not text or not isinstance(text, str):
+        return False
+    for pattern in PROMPT_INJECTION_PATTERNS:
+        if re.search(pattern, text):
+            return True
+    return False
+
+def _log_security_event(event_type: str, details: str, user_text: str = None) -> None:
+    log_message = f"[SECURITY] {event_type}: {details}"
+    if user_text is not None:
+        truncated = user_text[:100] + ("..." if len(user_text) > 100 else "")
+        log_message += f" | Input: {truncated}"
+    log.warning(log_message)
+# --------------------------------------------------
+
 MODEL_INFO = {
     "llama3.1:8b": ("Llama 3.1 8B", "general (por defecto)",
                     "Meta · 4,9 GB · razona bien, sigue instrucciones y admite herramientas. Buen equilibrio entre calidad y velocidad."),
@@ -34,29 +61,24 @@ MODEL_INFO = {
     "qwen2.5vl:7b": ("Qwen 2.5 VL 7B", "visión: lee imágenes",
                      "Alibaba · 6,0 GB · el único que entiende imágenes (fotos, capturas, PDF escaneados). No admite herramientas."),
 }
-CHAT_MODELS = {k: v[1] for k, v in MODEL_INFO.items()}      # id -> nota corta (compatibilidad)
-# Los que admiten llamadas a herramientas en Ollama (gemma2 y los de visión no)
+CHAT_MODELS = {k: v[1] for k, v in MODEL_INFO.items()}
 TOOL_MODELS = {"qwen2.5:7b", "llama3.1:8b", "qwen2.5-coder:7b", "mistral:7b"}
 
-
 def model_label(model: str) -> str:
-    """Texto del selector: «Llama 3.1 8B — uso general (predeterminado)»."""
     info = MODEL_INFO.get(model)
     return f"{info[0]} — {info[1]}" if info else model
-
 
 def model_detail(model: str) -> str:
     info = MODEL_INFO.get(model)
     return info[2] if info else ""
-EXTRA_PULLS = {"nomic-embed-text"}
-ALLOWED_PULLS = set(CHAT_MODELS) | EXTRA_PULLS     # lista cerrada: ningún texto externo puede añadir modelos
-DEFAULT_SYSTEM = ROLES[DEFAULT_ROLE][1]
 
+EXTRA_PULLS = {"nomic-embed-text"}
+ALLOWED_PULLS = set(CHAT_MODELS) | EXTRA_PULLS
+DEFAULT_SYSTEM = ROLES[DEFAULT_ROLE][1]
 
 def is_vision(model: str) -> bool:
     m = model.lower()
     return "vl" in m.split(":")[0] or "llava" in m or "vision" in m
-
 
 @dataclass
 class Params:
@@ -68,7 +90,6 @@ class Params:
     def options(self) -> dict:
         return {"temperature": float(self.temperature), "top_p": float(self.top_p),
                 "num_predict": int(self.max_tokens), "num_ctx": int(self.num_ctx)}
-
 
 @dataclass
 class Reply:
@@ -82,13 +103,10 @@ class Reply:
     def tokens_per_s(self) -> float:
         return self.tokens / self.seconds if self.seconds > 0 else 0.0
 
-
 def est_tokens(text: str) -> int:
     return max(1, int(len(text) / 3.6))
 
-
 def trim_history(messages: list[dict], num_ctx: int, reserve: int) -> list[dict]:
-    """Quita los mensajes más antiguos (nunca el system ni el último) hasta que quepan en el contexto."""
     budget = max(512, int(num_ctx * 0.8) - reserve)
     system = [m for m in messages[:1] if m["role"] == "system"]
     rest = messages[len(system):]
@@ -96,9 +114,19 @@ def trim_history(messages: list[dict], num_ctx: int, reserve: int) -> list[dict]
         rest.pop(0)
     return system + rest
 
-
 def build_messages(system: str, history: list[Message], user_text: str, images: list[str] | None,
                    vision: bool) -> list[dict]:
+    # ESCUDO DE SEGURIDAD: Bloqueo de Prompt Injection
+    if _is_prompt_injection_attempt(user_text):
+        _log_security_event("PROMPT_INJECTION_BLOCKED", "Intento de inyección detectado", user_text)
+        msgs = [{"role": "system", "content": system.strip()}] if system.strip() else []
+        msgs.append({
+            "role": "assistant",
+            "content": "⚠️ [Seguridad] He detectado un intento de modificar mis instrucciones. Por favor, reformula tu pregunta."
+        })
+        return msgs
+    # --------------------------------------------------
+
     msgs: list[dict] = []
     if system.strip():
         msgs.append({"role": "system", "content": system.strip()})
@@ -113,10 +141,8 @@ def build_messages(system: str, history: list[Message], user_text: str, images: 
     msgs.append(last)
     return msgs
 
-
 def _read(path: str) -> bytes:
     return Path(path).read_bytes()
-
 
 class ChatEngine:
     def __init__(self, cfg: dict):
@@ -124,14 +150,13 @@ class ChatEngine:
         self._installed: tuple[float, set[str]] | None = None
 
     def installed(self, max_age: float = 10.0) -> set[str]:
-        """Modelos instalados en Ollama. Se recuerda `max_age` segundos para no consultar al servidor en cada clic."""
         now = time.monotonic()
         if self._installed is not None and now - self._installed[0] < max_age:
             return set(self._installed[1])
         try:
             found = {m.model for m in get_client(self.cfg).list().models}
-        except Exception:  # noqa: BLE001
-            return set()                    # sin respuesta: no se recuerda, se reintentará en la siguiente consulta
+        except Exception:
+            return set()
         self._installed = (now, found)
         return set(found)
 
@@ -140,7 +165,6 @@ class ChatEngine:
 
     def stream(self, model: str, messages: list[dict], params: Params, cancel: threading.Event | None = None,
                on_text=None, keep_alive: str | int = "5m") -> Reply:
-        """Genera la respuesta en streaming. on_text(texto_acumulado) se llama mientras llega."""
         client = get_client(self.cfg)
         messages = trim_history(messages, params.num_ctx, params.max_tokens)
         parts: list[str] = []
@@ -171,8 +195,6 @@ class ChatEngine:
         return reply
 
     def pull(self, model: str, on_progress=None, cancel: threading.Event | None = None) -> None:
-        """Descarga un modelo de Ollama (solo se llama tras la confirmación del usuario).
-        on_progress(fracción 0-1 o None, texto) informa del avance."""
         if model not in ALLOWED_PULLS:
             raise PermissionError(f"Modelo no permitido: «{model}». Solo se descargan los de la lista de la aplicación.")
         for part in get_client(self.cfg).pull(model, stream=True):

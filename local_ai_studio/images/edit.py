@@ -1,7 +1,4 @@
 """Edición de imágenes con Pillow: recorte, giros, tamaño y filtros con parámetros (para sliders con vista previa).
-
-Todas las funciones son puras (devuelven una imagen nueva) y no usan GPU: se pueden probar sin modelos.
-Orden de aplicación: recorte → giro → volteo → tamaño → filtros.
 """
 from __future__ import annotations
 
@@ -14,6 +11,22 @@ SAVE_FORMATS = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}
 MAX_PIXELS = 120_000_000   # tope de píxeles al abrir una imagen
 MAX_SIDE = 16384        # tope de lado para no agotar la memoria con un resize descontrolado
 
+# --- SEGURIDAD: Prevención de Path Traversal ---
+def _is_safe_path(path: str | Path, base_dir: str | Path) -> bool:
+    try:
+        path_obj = Path(path).resolve()
+        base_dir_obj = Path(base_dir).resolve()
+        return base_dir_obj in path_obj.parents or path_obj == base_dir_obj
+    except Exception:
+        return False
+
+def _validate_and_get_safe_path(path: str | Path, base_dir: str | Path | None = None) -> Path:
+    if base_dir is None:
+        base_dir = Path.home()
+    if not _is_safe_path(path, base_dir):
+        raise ValueError(f"Acceso denegado: la ruta '{path}' no está dentro del directorio permitido '{base_dir}'")
+    return Path(path).resolve()
+# -----------------------------------------------
 
 @dataclass
 class EditParams:
@@ -103,7 +116,9 @@ def fit_size(size: tuple[int, int], w: int | None = None, h: int | None = None) 
 
 def save(img: Image.Image, path: str | Path, fmt: str | None = None, quality: int = 92) -> Path:
     """Guarda en PNG, JPEG o WebP. Si el formato no se indica, se deduce de la extensión."""
-    path = Path(path)
+    # VALIDACIÓN DE SEGURIDAD
+    path = _validate_and_get_safe_path(path)
+    
     fmt = (fmt or {v: k for k, v in SAVE_FORMATS.items()}.get(path.suffix.lower(), "PNG")).upper()
     if fmt not in SAVE_FORMATS:
         raise ValueError(f"Formato no admitido: {fmt}. Usa {', '.join(SAVE_FORMATS)}.")
@@ -117,9 +132,10 @@ def save(img: Image.Image, path: str | Path, fmt: str | None = None, quality: in
 
 
 def load(path: str | Path) -> Image.Image:
-    """Abre una imagen validando que lo sea y limitando su tamaño (evita bombas de descompresión).
-    El tamaño se comprueba con la cabecera, ANTES de decodificar los píxeles: una imagen diminuta en disco puede
-    declarar miles de millones de píxeles."""
+    """Abre una imagen validando que lo sea y limitando su tamaño."""
+    # VALIDACIÓN DE SEGURIDAD
+    path = _validate_and_get_safe_path(path)
+
     with Image.open(path) as im:
         if im.width * im.height > MAX_PIXELS:
             raise ValueError(f"La imagen es demasiado grande (más de {MAX_PIXELS // 1_000_000} megapíxeles).")

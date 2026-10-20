@@ -5,6 +5,23 @@ from pathlib import Path
 
 from faster_whisper import WhisperModel
 
+# --- SEGURIDAD: Validación de rutas ---
+def _is_safe_path(path: str | Path, base_dir: str | Path) -> bool:
+    try:
+        path_obj = Path(path).resolve()
+        base_dir_obj = Path(base_dir).resolve()
+        return base_dir_obj in path_obj.parents or path_obj == base_dir_obj
+    except Exception:
+        return False
+
+def _validate_audio_path(path: str | Path) -> Path:
+    # Permite leer archivos desde cualquier lugar de la carpeta del usuario
+    base_dir = Path.home()
+    if not _is_safe_path(path, base_dir):
+        raise ValueError("Acceso denegado: El archivo de audio está fuera del directorio permitido.")
+    return Path(path).resolve()
+# --------------------------------------
+
 log = logging.getLogger(__name__)
 
 @dataclass
@@ -28,16 +45,20 @@ class AudioTranscriber:
                 self.model_size, 
                 device=self.device, 
                 compute_type=self.compute_type,
-                local_files_only=True
+                local_files_only=True # Seguridad: No intenta descargar nada de internet
             )
         return self._model
 
     def transcribe(self, audio_path: str | Path, cancel_event: threading.Event = None, on_text=None) -> TranscribeResult:
         """Transcribe un archivo de audio y devuelve el texto."""
+        
+        # ESCUDO DE SEGURIDAD: Validamos la ruta antes de pasársela a la IA
+        safe_path = _validate_audio_path(audio_path)
+        
         model = self.load_model()
         
         segments, info = model.transcribe(
-            str(audio_path), 
+            str(safe_path), 
             beam_size=5,
             language=None  # Auto-detectar idioma
         )
@@ -50,7 +71,6 @@ class AudioTranscriber:
             
             text_parts.append(segment.text)
             
-            # Mandamos el texto a la interfaz en tiempo real si nos pasan la función
             if on_text:
                 on_text(segment.text + "\n")
 

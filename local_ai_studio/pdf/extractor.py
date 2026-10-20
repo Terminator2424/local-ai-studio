@@ -26,6 +26,22 @@ _PAGENUM_RE = re.compile(r"^\s*(p[áa]g(ina)?\.?|page)?\s*\d+(\s*(de|of|/)\s*\d+
 _MATH_CHARS = set("∫∑∏≈≤≥≠±√∞∂∈→−×÷∇∮")
 _ORPHAN_RE = re.compile(r"^(Z{1,3}|[0-9]{1,2}|[A-Za-z]{1,2})$")
 
+# --- SEGURIDAD: Prevención de Path Traversal ---
+def _is_safe_path(path: str | Path, base_dir: str | Path) -> bool:
+    try:
+        path_obj = Path(path).resolve()
+        base_dir_obj = Path(base_dir).resolve()
+        return base_dir_obj in path_obj.parents or path_obj == base_dir_obj
+    except Exception:
+        return False
+
+def _validate_and_get_safe_path(path: str | Path, base_dir: str | Path | None = None) -> Path:
+    if base_dir is None:
+        base_dir = Path.home() # Permite archivos en Descargas, Escritorio, etc.
+    if not _is_safe_path(path, base_dir):
+        raise ValueError(f"Acceso denegado: la ruta '{path}' no está dentro del directorio permitido '{base_dir}'")
+    return Path(path).resolve()
+# -----------------------------------------------
 
 @dataclass
 class PageData:
@@ -257,14 +273,11 @@ def _document_title(doc: pymupdf.Document, pages: list[PageData], path: str | Pa
 
 def extract_pages(path: str | Path, pdf_hash: str, cfg: dict, vision, progress, cancel: threading.Event,
                   math_vision: bool = True, phase=None, double_vision: bool = True):
-    """Devuelve (lista de PageData, título, nº de páginas).
+    """Devuelve (lista de PageData, título, nº de páginas)."""
 
-    - Texto con PyMuPDF; si falta, pdfplumber; si sigue faltando, visión.
-    - Páginas con fórmulas (detección heurística) se transcriben con visión en LaTeX; si la visión
-      pierde cifras respecto al texto vectorial, se añade ese texto como complemento.
-    - progress(i, total, mensaje) se llama por página; phase('extract'|'vision') indica la fase actual.
-    El PDF y pdfplumber se cierran siempre, también al cancelar o fallar.
-    """
+    # VALIDACIÓN DE SEGURIDAD
+    path = _validate_and_get_safe_path(path)
+
     ecfg = cfg["extraction"]
     min_chars = int(ecfg["min_chars_per_page"])
     threshold = int(ecfg.get("math_min_score", 5))
@@ -280,12 +293,11 @@ def extract_pages(path: str | Path, pdf_hash: str, cfg: dict, vision, progress, 
                     raise Cancelled()
                 st = _PageState(original)
                 if len(st.text) < min_chars:
-                    # pdfplumber a veces extrae lo que PyMuPDF no
                     try:
                         alt = plumber.text(i)
                         if len(alt) >= min_chars:
                             st.text, st.source = alt, "pdfplumber"
-                    except Exception as exc:  # noqa: BLE001  (opcional: si falla se sigue con lo que hay)
+                    except Exception as exc:
                         log.info("pdfplumber no pudo leer la página %d: %s", i + 1, exc)
                 scanned = len(st.text) < min_chars
                 has_math = math_vision and not scanned and math_score(st.text) >= threshold
@@ -293,10 +305,9 @@ def extract_pages(path: str | Path, pdf_hash: str, cfg: dict, vision, progress, 
                     reader.read(i, total, st, original, scanned)
                 geo: list = []
                 if has_math:
-                    # Fase 0: la misma fórmula se reconstruye desde los glifos del PDF (sin modelo) para comprobarla y colocarla
                     try:
                         geo = [asdict(g) for g in mathgeom.page_formulas(doc[i])]
-                    except Exception as exc:  # noqa: BLE001  (si la geometría falla, la página sigue sin ella)
+                    except Exception as exc:
                         log.warning("Reconstrucción geométrica de la página %d omitida: %s", i + 1, exc)
                 if not st.text.strip():
                     st.source = "vacía"

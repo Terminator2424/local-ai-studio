@@ -28,10 +28,17 @@ class ModelPicker(ctk.CTkFrame):
     def __init__(self, master, models: list[str], default: str, command: Callable[[str], None] | None = None,
                  width: int = 300, wrap: int = 420):
         super().__init__(master, fg_color="transparent")
-        self._models = [m for m in models if m in MODEL_INFO] or list(models)
+        # SEGURIDAD: Eliminado el "or list(models)" que permitía saltarse la lista blanca si algo fallaba.
+        self._models = [m for m in models if m in MODEL_INFO]
+        
         self._by_label = {model_label(m): m for m in self._models}
         self._command = command
-        self._current = default if default in self._models else self._models[0]
+        
+        if not self._models:
+            self._current = ""
+        else:
+            self._current = default if default in self._models else self._models[0]
+            
         self.var = _IdVar(self)
         self.menu = option_menu(self, list(self._by_label), None, self._on_pick, width=width)
         self.menu.pack(anchor="w")
@@ -53,6 +60,10 @@ class ModelPicker(ctk.CTkFrame):
 
     def refresh_note(self, missing: bool | None = None) -> None:
         """Actualiza el detalle. `missing` lo decide quien conoce los modelos instalados (así no se consulta a Ollama aquí)."""
+        if not self._current:
+            self.note.configure(text="No hay modelos válidos disponibles.", text_color=WARN)
+            return
+            
         detail = model_detail(self._current)
         if missing:
             self.note.configure(text=f"{detail}\nNo instalado: se descargará al usarlo.", text_color=WARN)

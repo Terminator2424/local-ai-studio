@@ -1,12 +1,4 @@
-"""Índice local de documentos (RAG): fragmentos por página con búsqueda híbrida.
-
-- Texto: el texto vectorial de cada página (sin IA, sin visión), trozeado en fragmentos de ~900 caracteres.
-- Búsqueda léxica: SQLite FTS5 (BM25). Encuentra cifras, nombres y fórmulas exactas, que los embeddings pierden.
-- Búsqueda semántica: embeddings de Ollama (nomic-embed-text, local). Si el modelo no está instalado, el índice sigue
-  funcionando solo con la búsqueda léxica.
-- Las dos listas se fusionan por rango (RRF). Cada resultado conserva documento y NÚMERO DE PÁGINA para poder citarlo.
-Todo se guarda en conversations/rag.db (fuera de git).
-"""
+"""Índice local de documentos (RAG): fragmentos por página con búsqueda híbrida."""
 from __future__ import annotations
 
 import logging
@@ -31,6 +23,23 @@ CHUNK = 900
 OVERLAP = 120
 MAX_PAGES = 1500
 
+# --- SEGURIDAD: Prevención de Path Traversal ---
+def _is_safe_path(path: str | Path, base_dir: str | Path) -> bool:
+    try:
+        path_obj = Path(path).resolve()
+        base_dir_obj = Path(base_dir).resolve()
+        return base_dir_obj in path_obj.parents or path_obj == base_dir_obj
+    except Exception:
+        return False
+
+def _validate_and_get_safe_path(path: str | Path, base_dir: str | Path | None = None) -> Path:
+    if base_dir is None:
+        base_dir = Path.home()
+    if not _is_safe_path(path, base_dir):
+        raise ValueError(f"Acceso denegado: la ruta '{path}' no está dentro del directorio permitido '{base_dir}'")
+    return Path(path).resolve()
+# -----------------------------------------------
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS docs (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, name TEXT NOT NULL,
     sha256 TEXT NOT NULL UNIQUE, pages INTEGER NOT NULL, empty_pages INTEGER NOT NULL DEFAULT 0, indexed REAL NOT NULL);
@@ -40,7 +49,6 @@ CREATE INDEX IF NOT EXISTS idx_chunks_doc ON chunks(doc_id, page);
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(text, tokenize='unicode61 remove_diacritics 2');
 """
 
-
 @dataclass
 class Hit:
     chunk_id: int
@@ -49,7 +57,6 @@ class Hit:
     page: int
     text: str
     score: float
-
 
 @dataclass
 class IndexResult:
@@ -61,14 +68,11 @@ class IndexResult:
     embedded: bool
     already: bool = False
 
-
 def fts_query(q: str) -> str:
-    """Consulta FTS5 segura: palabras sueltas entre comillas unidas por OR (sin operadores que el usuario pueda inyectar)."""
     words = re.findall(r"[\wáéíóúüñÁÉÍÓÚÜÑ.,]+", q, flags=re.UNICODE)
     toks = [w.strip(".,") for w in words]
-    toks = [t[:40] for t in dict.fromkeys(toks) if len(t) >= 2 or t.isdigit()][:40]      # palabras completas, nunca una comilla cortada
+    toks = [t[:40] for t in dict.fromkeys(toks) if len(t) >= 2 or t.isdigit()][:40]
     return " OR ".join('"' + t.replace('"', '') + '"' for t in toks)
-
 
 def split_text(text: str, size: int = CHUNK, overlap: int = OVERLAP) -> list[str]:
     from ..pdf.chunking import RecursiveSplitter
@@ -89,27 +93,24 @@ class DocIndex:
         self.db.executescript(_SCHEMA)
         self._embed_fn = embed_fn
         self._lock = threading.RLock()
-        self._matrix = None            # caché de la matriz de vectores
+        self._matrix = None
         self._ids: list[int] = []
-        self._doc_of = None            # documento de cada vector (para filtrar por documento)
+        self._doc_of = None
 
     def close(self):
         self.db.close()
 
-    # ---------------------------------------------------------- embeddings
     def embed(self, texts: list[str]) -> list[list[float]] | None:
-        """Embeddings locales; None si el modelo no está disponible (se sigue con búsqueda léxica)."""
         try:
             if self._embed_fn is not None:
                 return self._embed_fn(texts)
             if self.cfg is None:
                 return None
             return [list(v) for v in get_client(self.cfg).embed(model=EMBED_MODEL, input=texts).embeddings]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.info("Sin embeddings (%s): solo búsqueda léxica", str(exc)[:80])
             return None
 
-    # ------------------------------------------------------------- indexar
     def add_pdf(self, path: str | Path, progress: Callable[[float, str], None] | None = None,
                 cancel: threading.Event | None = None) -> IndexResult:
         import numpy as np
@@ -117,7 +118,10 @@ class DocIndex:
 
         from ..pdf.extractor import _clean
         from ..pdf.layout import layout_text
-        path = Path(path)
+
+        # VALIDACIÓN DE SEGURIDAD
+        path = _validate_and_get_safe_path(path)
+
         digest = sha256_file(path)
         with self._lock:
             row = self.db.execute("SELECT * FROM docs WHERE sha256 = ?", (digest,)).fetchone()
@@ -139,7 +143,7 @@ class DocIndex:
                     progress(0.5 * i / doc.page_count, f"Leyendo página {i + 1} de {doc.page_count}")
                 try:
                     text = _clean(layout_text(doc[i]))
-                except Exception:  # noqa: BLE001
+                except Exception:
                     text = ""
                 parts = split_text(text) if len(text.strip()) >= 20 else []
                 if not parts:
@@ -163,7 +167,7 @@ class DocIndex:
                 n = np.linalg.norm(a)
                 vecs[s + k] = (a / n if n else a).tobytes()
             embedded = True
-        with self._lock, self.db:               # una sola transacción: se guarda el documento entero o nada
+        with self._lock, self.db:
             cur = self.db.execute("INSERT INTO docs (path, name, sha256, pages, empty_pages, indexed) VALUES (?, ?, ?, ?, ?, ?)",
                                   (str(path), path.name, digest, pages, empty, time.time()))
             doc_id = int(cur.lastrowid or 0)
@@ -186,7 +190,6 @@ class DocIndex:
             self._matrix = None
 
     def page_text(self, doc_id: int, first: int, last: int, limit: int = 12000) -> str:
-        """Texto de un rango de páginas (para el modo estudiar)."""
         with self._lock:
             rows = self.db.execute("SELECT page, text FROM chunks WHERE doc_id = ? AND page BETWEEN ? AND ? ORDER BY page, idx",
                                    (doc_id, first, last)).fetchall()
@@ -198,10 +201,7 @@ class DocIndex:
             out.append(r["text"])
         return "\n".join(out)[:limit]
 
-    # -------------------------------------------------------------- buscar
     def _load_matrix(self):
-        """Matriz (N×d) de vectores normalizados con sus ids de fragmento y de documento. Si hay vectores de distinta
-        dimensión (se cambió el modelo de embeddings), se usan solo los de la dimensión más frecuente."""
         import numpy as np
         with self._lock:
             if self._matrix is None:
@@ -216,7 +216,6 @@ class DocIndex:
             return self._matrix, self._ids, self._doc_of
 
     def _lexical(self, query: str, doc_ids: list[int] | None) -> list[int]:
-        """Ids de fragmento por BM25 (SQLite FTS5), ya filtrados por documento."""
         q = fts_query(query)
         if not q:
             return []
@@ -229,18 +228,17 @@ class DocIndex:
         try:
             with self._lock:
                 return [r[0] for r in self.db.execute(sql, args)]
-        except sqlite3.OperationalError:          # una consulta rara nunca debe romper la búsqueda
+        except sqlite3.OperationalError:
             return []
 
     def search(self, query: str, k: int = 6, doc_ids: list[int] | None = None) -> list[Hit]:
-        """Los `k` fragmentos más relevantes (léxico + semántico fusionados por rango), opcionalmente solo de `doc_ids`."""
         import numpy as np
         if doc_ids is not None and not doc_ids:
             return []
         ranks: dict[int, float] = {}
         for pos, cid in enumerate(self._lexical(query, doc_ids)):
             ranks[cid] = ranks.get(cid, 0.0) + 1.0 / (60 + pos)
-        qv = self.embed([query])                  # llamada a Ollama: fuera del cerrojo
+        qv = self.embed([query])
         if qv is not None:
             m, ids, doc_of = self._load_matrix()
             if len(ids) and m.shape[1] == len(qv[0]):
