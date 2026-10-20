@@ -4,7 +4,7 @@ Asistente de IA **100 % local** para Windows: resume PDFs con fórmulas y códig
 documentos **citando la página**, conversa, ayuda a estudiar, genera y edita imágenes, y puede ejecutar acciones sencillas en tu PC
 **solo con tu permiso**. Nada de lo que escribes ni de tus documentos sale del equipo: sin nube, sin cuentas, sin telemetría.
 
-![Python 3.12](https://img.shields.io/badge/python-3.12-blue) ![Windows](https://img.shields.io/badge/plataforma-Windows%2010%2F11-lightgrey) ![Licencia MIT](https://img.shields.io/badge/licencia-MIT-green) ![100 % local](https://img.shields.io/badge/IA-100%20%25%20local-d62839) ![Demostración de Local AI Studio](docs/img/demovideo.gif.mp4)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue) ![Windows](https://img.shields.io/badge/plataforma-Windows%2010%2F11-lightgrey) ![Licencia MIT](https://img.shields.io/badge/licencia-MIT-green) ![100 % local](https://img.shields.io/badge/IA-100%20%25%20local-d62839) ![Demostración de Local AI Studio](docs/img/demovideo.gif)
 
 Pensado para una GPU de 8 GB (RTX 4060) y 16 GB de RAM, pero se adapta al hardware que detecta. Interfaz simple: fondo blanco,
 modo oscuro opcional, acento rojo.
