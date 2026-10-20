@@ -28,7 +28,7 @@ modo oscuro opcional, acento rojo.
 | **Estudiar** | Tarjetas (CSV para Anki), preguntas de práctica y ejercicios paso a paso con cada igualdad marcada ✓ / ✗ / ⚠. Ejecuta el código en un sandbox. |
 | **Generar imagen** | Stable Diffusion 1.5 y SDXL en fp16, lote 1–4, semilla, guardar, copiar, enviar al editor. |
 | **Editar imagen** | Recorte, giros, tamaño y filtros con vista previa; guarda PNG, JPEG o WebP. |
- Transcribir Audio: Convierte videos o audios (MP4, MP3, WAV) a texto en tiempo real 100% local usando faster-whisper.
+| **Transcribir Audio** | Convierte videos o audios (MP4, MP3, WAV) a texto en tiempo real 100% local usando faster-whisper.|
 | **Ajustes** | Diagnóstico de GPU/VRAM/PyTorch, modelos, almacenamiento con limpieza segura y estado de la barrera de red. |
 
 El inventario completo, con límites, está en **[docs/CAPACIDADES.md](docs/CAPACIDADES.md)**.
@@ -124,11 +124,7 @@ imágenes. **No incluye PyTorch** (no genera imágenes) **ni el sandbox** de có
 
 ## Preguntas frecuentes
 
-**¿Tiene restricciones éticas, o hay que entrenarla?** Las restricciones y el conocimiento están en los pesos de cada modelo (Llama,
-Qwen, Gemma, Mistral), fruto de su entrenamiento; esta aplicación **no los modifica** ni ofrece versiones «sin censura». Su
-conocimiento acaba en su fecha de entrenamiento y puede equivocarse, por eso la app comprueba con código lo que se puede comprobar. No
-hace falta entrenar nada para usar tus documentos: lo cubre **Documentos**. Para trabajo de seguridad legítimo hay un rol
-«Seguridad (defensiva)».
+**¿Tiene restricciones éticas, o hay que entrenarla? Las restricciones y el conocimiento están en los pesos de cada modelo (Llama, Qwen, Gemma, Mistral), fruto de su entrenamiento. Para tareas técnicas, médicas o legales que requieran neutralidad total, la aplicación permite seleccionar modelos alternativos (como Dolphin-Mistral) que no aplican filtros morales restrictivos. El conocimiento de los modelos acaba en su fecha de entrenamiento; por eso la app comprueba con código lo que se puede comprobar (fórmulas, cifras) en el resumen de PDFs. Para tus propios documentos, no hace falta entrenar nada. Para trabajo de seguridad legítimo hay un rol «Seguridad (defensiva)».».
 
 **¿Puede controlar todo el PC?** No, y es deliberado: ocho herramientas cerradas, las que cambian algo piden tu permiso con la acción
 completa. Ver [docs/CAPACIDADES.md](docs/CAPACIDADES.md#4-asistente-con-herramientas-acciones-en-el-pc).
