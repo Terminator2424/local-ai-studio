@@ -119,17 +119,17 @@ def trim_history(messages: list[dict], num_ctx: int, reserve: int) -> list[dict]
 
 def build_messages(system: str, history: list[Message], user_text: str, images: list[str] | None,
                    vision: bool) -> list[dict]:
-    
+
     # 1. Declaramos 'msgs' AQUÍ ARRIBA, una sola vez
     msgs: list[dict] = []
 
     # 2. ESCUDO DE SEGURIDAD: Bloqueo de Prompt Injection
     if _is_prompt_injection_attempt(user_text):
         _log_security_event("PROMPT_INJECTION_BLOCKED", "Intento de inyección detectado", user_text)
-        
+
         if system.strip():
             msgs.append({"role": "system", "content": system.strip()})
-            
+
         msgs.append({
             "role": "assistant",
             "content": "⚠️ [Seguridad] He detectado un intento de modificar mis instrucciones. Por favor, reformula tu pregunta."
@@ -139,18 +139,18 @@ def build_messages(system: str, history: list[Message], user_text: str, images: 
     # 3. Si es seguro, seguimos con el flujo normal (Ya no volvemos a declarar 'msgs: list[dict] = []')
     if system.strip():
         msgs.append({"role": "system", "content": system.strip()})
-        
+
     for m in history:
         d: dict[str, Any] = {"role": m.role, "content": m.content}
         if vision and m.images:
             d["images"] = [_read(p) for p in m.images if Path(p).is_file()]
         msgs.append(d)
-        
+
     last: dict[str, Any] = {"role": "user", "content": user_text}
     if vision and images:
         last["images"] = [_read(p) for p in images if Path(p).is_file()]
     msgs.append(last)
-    
+
     return msgs
 
 def _read(path: str) -> bytes:
