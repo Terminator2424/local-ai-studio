@@ -34,6 +34,7 @@ AREAS = (
     Area("outputs", "Imágenes generadas", BASE_DIR / "outputs", "Tus imágenes (el prompt y la semilla van dentro del PNG)."),
     Area("chats", "Chats e índice de documentos", BASE_DIR / "conversations", "Historial y búsqueda de «Documentos»."),
     Area("summaries", "Resúmenes guardados", SUMMARIES_DIR, "Tus resúmenes en Markdown y Word."),
+    Area("transcriptions", "Transcripciones de audio", BASE_DIR / "transcripciones", "Tus transcripciones guardadas en formato .txt."),
     Area("cache", "Caché de resúmenes", CACHE_DIR, "Se recrea sola; ahorra repetir el trabajo con un PDF ya resumido.", True),
     Area("pages", "Páginas de PDF renderizadas", IMAGES_DIR, "Imágenes temporales para el modelo de visión.", True),
     Area("logs", "Registros", LOG_DIR, "app.log y sus copias rotadas."),

@@ -15,7 +15,6 @@ def _is_safe_path(path: str | Path, base_dir: str | Path) -> bool:
         return False
 
 def _validate_audio_path(path: str | Path) -> Path:
-    # Permite leer archivos desde cualquier lugar de la carpeta del usuario
     base_dir = Path.home()
     if not _is_safe_path(path, base_dir):
         raise ValueError("Acceso denegado: El archivo de audio está fuera del directorio permitido.")
@@ -50,9 +49,9 @@ class AudioTranscriber:
         return self._model
 
     def transcribe(self, audio_path: str | Path, cancel_event: threading.Event = None, on_text=None) -> TranscribeResult:
-        """Transcribe un archivo de audio y devuelve el texto."""
+        """Transcribe un archivo de audio y devuelve el texto con timestamps."""
         
-        # ESCUDO DE SEGURIDAD: Validamos la ruta antes de pasársela a la IA
+        # ESCUDO DE SEGURIDAD
         safe_path = _validate_audio_path(audio_path)
         
         model = self.load_model()
@@ -69,13 +68,24 @@ class AudioTranscriber:
                 log.warning("Transcripción cancelada por el usuario.")
                 break
             
-            text_parts.append(segment.text)
+            # --- LÓGICA DE TIMESTAMPS ---
+            start_sec = int(segment.start)
+            mins, secs = divmod(start_sec, 60)
+            hours, mins = divmod(mins, 60)
+            
+            if hours > 0:
+                timestamp = f"[{hours:02d}:{mins:02d}:{secs:02d}]"
+            else:
+                timestamp = f"[{mins:02d}:{secs:02d}]"
+                
+            formatted_text = f"{timestamp} {segment.text.strip()}"
+            text_parts.append(formatted_text)
             
             if on_text:
-                on_text(segment.text + "\n")
+                on_text(formatted_text + "\n")
 
         return TranscribeResult(
-            text=" ".join(text_parts).strip(),
+            text="\n".join(text_parts).strip(),
             language=info.language,
             duration=info.duration
         )

@@ -16,6 +16,7 @@ config.yaml
 # --- Logs, resultados y datos de usuario (pueden contener contenido de tus documentos)
 *.log
 resumenes/
+transcripciones/ 
 imagenes/
 conversations/
 outputs/

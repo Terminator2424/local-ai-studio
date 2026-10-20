@@ -60,9 +60,12 @@ MODEL_INFO = {
                          "Alibaba · 4,7 GB · especializado en escribir, explicar y depurar código; admite herramientas."),
     "qwen2.5vl:7b": ("Qwen 2.5 VL 7B", "visión: lee imágenes",
                      "Alibaba · 6,0 GB · el único que entiende imágenes (fotos, capturas, PDF escaneados). No admite herramientas."),
+    "dolphin-mistral": ("Dolphin Mistral 7B", "sin censura / técnico",
+                        "Cognitive Computations · 4,4 GB · Basado en Mistral, sin filtros morales. Ideal para resúmenes técnicos, médicos o legales sin restricciones."),
+
 }
 CHAT_MODELS = {k: v[1] for k, v in MODEL_INFO.items()}
-TOOL_MODELS = {"qwen2.5:7b", "llama3.1:8b", "qwen2.5-coder:7b", "mistral:7b"}
+TOOL_MODELS = {"qwen2.5:7b", "llama3.1:8b", "qwen2.5-coder:7b", "mistral:7b", "dolphin-mistral"}
 
 def model_label(model: str) -> str:
     info = MODEL_INFO.get(model)

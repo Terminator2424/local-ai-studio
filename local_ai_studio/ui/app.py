@@ -105,11 +105,21 @@ class StudioApp(_Base):
                               hover_color=BORDER, text_color=TEXT, font=font(14), command=lambda k=key: self.show(k))
             b.pack(fill="x", padx=12, pady=2)
             self.nav[key] = b
+            
         self.dark_switch = ctk.CTkSwitch(side, text="Modo oscuro", command=self._toggle_dark, progress_color=ACCENT,
                                          font=font(12), text_color=MUTED)
         self.dark_switch.pack(side="bottom", anchor="w", padx=20, pady=20)
         if self.dark:
             self.dark_switch.select()
+            
+        # --- BOTÓN DE LIBERAR VRAM (Acceso rápido) ---
+        self.btn_free_vram = ctk.CTkButton(
+            side, text="🧹 Liberar VRAM", command=self._free_vram, 
+            fg_color="transparent", hover_color=BORDER, text_color=MUTED, 
+            anchor="w", font=font(12)
+        )
+        self.btn_free_vram.pack(side="bottom", fill="x", padx=12, pady=(0, 10))
+        # ---------------------------------------------
 
     def _build_status(self):
         bar = ctk.CTkFrame(self, fg_color="transparent", height=26)
@@ -155,6 +165,20 @@ class StudioApp(_Base):
     def _tell_busy(other: str) -> None:
         messagebox.showinfo("La GPU está ocupada", f"Ahora mismo está en curso: «{other}».\n\nCon 8 GB de VRAM solo cabe un trabajo "
                             "pesado a la vez (se descargarían los modelos el uno al otro). Espera a que termine o cancélalo.")
+
+    # --- FUNCIÓN PARA LIBERAR LA VRAM ---
+    def _free_vram(self):
+        if self.job_busy():
+            return
+        self.status_lbl.configure(text="Liberando VRAM...")
+        def work():
+            try:
+                self.manager.free_all()
+            finally:
+                self.after(0, lambda: self.status_lbl.configure(text="VRAM liberada correctamente."))
+                self.after(3000, self._tick_status)
+        threading.Thread(target=work, daemon=True).start()
+    # ------------------------------------
 
     def _tick_status(self):
         free = ""
