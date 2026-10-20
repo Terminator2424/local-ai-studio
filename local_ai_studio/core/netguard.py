@@ -107,7 +107,7 @@ def allow_network(reason: str = ""):
             prev = getattr(constants, "HF_HUB_OFFLINE", True)
             setattr(constants, "HF_HUB_OFFLINE", False)  # noqa: B010  (atributo de un módulo opcional, sin tipos)
             hf_constants = constants
-        except Exception:  # noqa: BLE001  (huggingface_hub es opcional: sin él no hay nada que reabrir)
+        except Exception:
             hf_constants = None
         yield
     finally:

@@ -13,7 +13,7 @@ from .theme import BORDER, FONT, SURFACE, TEXT, font
 try:
     from tkinterweb import HtmlFrame
     HAS_WEB = True
-except Exception:  # noqa: BLE001
+except Exception:
     HAS_WEB = False
 
 log = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class MdView(ctk.CTkFrame):
             try:
                 self.web = HtmlFrame(self, messages_enabled=False)
                 self.web.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.warning("tkinterweb no disponible: %s", exc)
         self.text = ctk.CTkTextbox(self, wrap="word", fg_color="transparent", font=font(14), text_color=TEXT, border_spacing=14)
         if self.web is None:
@@ -63,14 +63,14 @@ class MdView(ctk.CTkFrame):
             return f"<html><head><meta charset='utf-8'><style>{css}</style></head><body>{html}</body></html>"
         try:
             self.web.load_html(page(*md_to_html(md_, theme, FONT, formulas=False, safe=True)))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("Fallo del visor: %s", exc)
             return
 
         def work():
             try:
                 self.q.put((token, page(*md_to_html(md_, theme, FONT, formulas=True, safe=True))))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.warning("No se pudieron dibujar las fórmulas: %s", exc)
         if "$" in md or "\\[" in md:
             threading.Thread(target=work, daemon=True).start()

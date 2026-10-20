@@ -67,7 +67,7 @@ class ModelManager:
     def running_llms(self) -> list[str]:
         try:
             return [m.model for m in get_client(self.cfg).ps().models]
-        except Exception:  # noqa: BLE001
+        except Exception:
             return []
 
     def unload_llms(self) -> list[str]:
@@ -78,7 +78,7 @@ class ModelManager:
             try:
                 client.generate(model=name, prompt="", keep_alive=0)
                 log.info("Ollama: %s descargado de la VRAM", name)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.warning("No se pudo descargar %s: %s", name, exc)
         return names
 
@@ -129,7 +129,7 @@ def empty_cuda_cache():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
-    except Exception as exc:  # noqa: BLE001  (liberar caché es un favor: si falla no debe tumbar la operación)
+    except Exception as exc:
         log.debug("No se pudo vaciar la caché de CUDA: %s", exc)
 
 

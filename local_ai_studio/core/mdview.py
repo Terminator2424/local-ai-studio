@@ -48,7 +48,7 @@ def _formula_png(latex: str, color: str, size: float) -> tuple[bytes, int, int] 
         from PIL import Image
         w, h = Image.open(io.BytesIO(data)).size
         return data, w, h
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.info("Fórmula no renderizable con mathtext (%s): %s", exc.__class__.__name__, latex[:60])
         return None
 

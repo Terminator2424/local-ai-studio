@@ -249,7 +249,7 @@ def _proves_different(a, b) -> bool:
         subs = {s: points[(k + j) % len(points)] for j, s in enumerate(syms)}
         try:
             v = sp.nsimplify(d.subs(subs))
-        except Exception:  # noqa: BLE001, S112  (sympy puede fallar en cualquier punto de evaluación: se salta ese punto)
+        except Exception:  # noqa: S112  (sympy puede fallar en cualquier punto de evaluación: se salta ese punto)
             continue
         if not v.is_number or v.has(sp.zoo, sp.nan, sp.oo):
             continue

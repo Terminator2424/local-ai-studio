@@ -119,5 +119,5 @@ def wrap_untrusted(name: str, text: str) -> str:
 def _safe_args(args) -> dict:
     try:
         return {str(k)[:40]: str(v)[:200] for k, v in dict(args).items()}
-    except Exception:  # noqa: BLE001
+    except Exception:
         return {}

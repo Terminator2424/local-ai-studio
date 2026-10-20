@@ -33,7 +33,7 @@ def available() -> bool:
     try:
         import importlib.util
         ok = importlib.util.find_spec("pix2tex") is not None and importlib.util.find_spec("torch") is not None
-    except Exception:  # noqa: BLE001
+    except Exception:
         ok = False
     _unavailable = not ok
     return ok
@@ -47,7 +47,7 @@ def _load():
             warnings.filterwarnings("ignore")
             from pix2tex.cli import LatexOCR
             _model = LatexOCR()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("No se pudo cargar pix2tex (se omite la tercera lectura): %s", exc)
             _unavailable = True
     return _model
@@ -116,7 +116,7 @@ def read_blocks(page: pymupdf.Page, dpi: int = 300) -> list[str]:
             pix = page.get_pixmap(dpi=dpi, clip=rect)
             img = Image.open(io.BytesIO(pix.tobytes("png")))
             out.append(model(img))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.info("pix2tex falló en una zona: %s", exc)
             out.append("")
     return out

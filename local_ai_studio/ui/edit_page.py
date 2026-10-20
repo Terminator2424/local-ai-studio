@@ -231,7 +231,7 @@ class EditPage(ctk.CTkFrame):
     def open_path(self, path: str):
         try:
             self.img = edit.load(path)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             messagebox.showerror("No se pudo abrir", f"{type(exc).__name__}: {exc}")
             return
         self.path = Path(path)

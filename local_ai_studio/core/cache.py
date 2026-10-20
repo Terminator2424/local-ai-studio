@@ -26,7 +26,7 @@ def load(pdf_hash: str, kind: str, phash: str):
         return None
     try:
         return json.loads(p.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("Cache corrupta %s: %s", p.name, exc)
         return None
 

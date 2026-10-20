@@ -30,7 +30,7 @@ from .theme import (ACCENT, ACCENT_H, BORDER, ERR, FONT, LOG_COLORS, MUTED, OK, 
 try:  # visor HTML con fórmulas dibujadas (matplotlib); si falta, se usa un visor de texto
     from tkinterweb import HtmlFrame
     HAS_WEB = True
-except Exception:  # noqa: BLE001
+except Exception:
     HAS_WEB = False
 
 log = logging.getLogger(__name__)
@@ -262,7 +262,7 @@ class PdfPage(ctk.CTkFrame):
             try:
                 self.web = HtmlFrame(card, messages_enabled=False)
                 self.web.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.warning("tkinterweb no disponible, se usa el visor de texto: %s", exc)
                 self.web = None
         self.view = ctk.CTkTextbox(card, wrap="word", fg_color="transparent", font=ctk.CTkFont(FONT, 14), text_color=TEXT,
@@ -447,7 +447,7 @@ class PdfPage(ctk.CTkFrame):
         try:   # la VRAM libre cambia con el uso del PC: se reevalúa el hardware en cada ejecución
             self.cfg = load_config()
             self.diag_lbl.configure(text=describe_hardware(self.cfg))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("No se pudo releer la configuración: %s", exc)
         self.cancel.clear()
         self.running = True
@@ -472,7 +472,7 @@ class PdfPage(ctk.CTkFrame):
         ui = QueueUI(self.q)
         try:      # con 8 GB no caben a la vez un modelo de Ollama y el de imágenes: se libera el de imágenes
             self.app.manager.use_llm(self.cfg["ollama"]["vision_model"])
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("No se pudo preparar la VRAM: %s", exc)
         for n, i in enumerate(todo, 1):
             if self.cancel.is_set():
@@ -533,7 +533,7 @@ class PdfPage(ctk.CTkFrame):
             if msg[1] == self._html_token and self.web is not None:
                 try:
                     self.web.load_html(msg[2])
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     log.warning("No se pudo actualizar el visor: %s", exc)
         elif kind == "file_start":
             _, i, n, total = msg
@@ -635,7 +635,7 @@ class PdfPage(ctk.CTkFrame):
             return f"<html><head><meta charset='utf-8'><style>{css}</style></head><body>{html}</body></html>"
         try:
             self.web.load_html(page(*md_to_html(md, theme, FONT, formulas=False, safe=True)))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("Fallo del visor HTML: %s", exc)
             self._render_text(md)
             return
@@ -643,7 +643,7 @@ class PdfPage(ctk.CTkFrame):
         def work():
             try:
                 self.q.put(("html", token, page(*md_to_html(md, theme, FONT, formulas=True, safe=True))))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.warning("No se pudieron dibujar las fórmulas: %s", exc)
         threading.Thread(target=work, daemon=True).start()
 

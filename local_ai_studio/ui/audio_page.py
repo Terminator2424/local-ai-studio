@@ -11,16 +11,16 @@ class AudioPage(ctk.CTkFrame):
     def __init__(self, master, app, **kwargs):
         super().__init__(master, **kwargs)
         self.app = app
-        
+
         # Rutas base
         self.project_root = Path(__file__).resolve().parent.parent.parent
         model_path = self.project_root / "models" / "faster-whisper-small"
         self.saves_dir = self.project_root / "transcripciones"
         self.saves_dir.mkdir(exist_ok=True)
-        
+
         self.transcriber = AudioTranscriber(model_size=str(model_path), device="cuda")
         self.engine = ChatEngine(self.app.cfg) # Motor de Ollama para resumir
-        
+
         self._cancel_event = threading.Event()
         self._current_file = None
 
@@ -86,11 +86,11 @@ class AudioPage(ctk.CTkFrame):
     def start_transcription(self):
         if not self._current_file:
             return
-            
+
         # SEGURIDAD: Bloqueo de GPU (evita que se procese audio y PDF al mismo tiempo)
         if not self.app.begin_job("Transcripción de Audio"):
             return
-            
+
         self.txt_result.delete("1.0", "end")
         self.btn_transcribe.configure(state="disabled")
         self.btn_load.configure(state="disabled")
@@ -129,10 +129,10 @@ class AudioPage(ctk.CTkFrame):
         base_name = Path(self._current_file).stem
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         auto_filename = f"{base_name}_{timestamp}.txt"
-        
+
         with open(self.saves_dir / auto_filename, "w", encoding="utf-8") as f:
             f.write(result.text)
-        
+
         self.lbl_status.configure(text=f"Completado y guardado. Idioma: {result.language}", text_color="green")
 
     def show_error(self, error_msg):
@@ -152,7 +152,7 @@ class AudioPage(ctk.CTkFrame):
         text = self.txt_result.get("1.0", "end-1c")
         if not text.strip():
             return
-            
+
         filepath = filedialog.asksaveasfilename(
             defaultextension=".txt",
             filetypes=[("Archivo de texto", "*.txt"), ("Todos los archivos", "*.*")],
@@ -187,20 +187,21 @@ class AudioPage(ctk.CTkFrame):
                 user_prompt = f"Aquí está la transcripción:\n\n{full_text}"
 
                 # Usamos Qwen 2.5 que es más objetivo para textos académicos/técnicos que Llama 3
-                model = "qwen2.5:7b" 
+                model = "qwen2.5:7b"
                 params = Params(temperature=0.3)
-                
+
                 messages = [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ]
 
                 reply = self.engine.stream(model, messages, params)
-                
+
                 self.after(0, self._show_summary_window, reply.text)
-                
+
             except Exception as e:
-                self.after(0, lambda: self.lbl_status.configure(text=f"Error al resumir: {e}", text_color="red"))
+                error_msg = str(e)
+                self.after(0, lambda: self.lbl_status.configure(text=f"Error al resumir: {error_msg}", text_color="red"))
             finally:
                 self.after(0, lambda: self.btn_summarize.configure(state="normal", text="✨ Resumir con IA"))
                 self.app.end_job("Resumen de texto")
@@ -209,7 +210,7 @@ class AudioPage(ctk.CTkFrame):
 
     def _show_summary_window(self, summary_text):
         self.lbl_status.configure(text="¡Resumen generado!", text_color="green")
-        
+
         win = ctk.CTkToplevel(self)
         win.title("Resumen Ejecutivo")
         win.geometry("600x500")

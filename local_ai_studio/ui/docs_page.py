@@ -201,7 +201,7 @@ class DocsPage(ctk.CTkFrame):
         try:
             try:
                 self.app.manager.use_llm(EMBED_MODEL)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.warning("No se pudo preparar la VRAM: %s", exc)
             for n, p in enumerate(paths, 1):
                 try:
@@ -212,7 +212,7 @@ class DocsPage(ctk.CTkFrame):
                     done += not r.already
                 except Cancelled:
                     raise
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     failed += 1
                     self.q.put(("log", f"✖ {p.name}: {exc}"))
             self.q.put(("index_done", f"Listo: {done} indexado(s), {skipped} ya estaban, {failed} con error."))

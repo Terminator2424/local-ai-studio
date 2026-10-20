@@ -118,7 +118,7 @@ def save(img: Image.Image, path: str | Path, fmt: str | None = None, quality: in
     """Guarda en PNG, JPEG o WebP. Si el formato no se indica, se deduce de la extensión."""
     # VALIDACIÓN DE SEGURIDAD
     path = _validate_and_get_safe_path(path)
-    
+
     fmt = (fmt or {v: k for k, v in SAVE_FORMATS.items()}.get(path.suffix.lower(), "PNG")).upper()
     if fmt not in SAVE_FORMATS:
         raise ValueError(f"Formato no admitido: {fmt}. Usa {', '.join(SAVE_FORMATS)}.")

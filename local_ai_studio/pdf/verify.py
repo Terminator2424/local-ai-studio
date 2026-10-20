@@ -117,7 +117,7 @@ def chain_error(latex: str) -> str | None:
     try:
         from .symcheck import symbolic_chain_error
         return symbolic_chain_error(latex)
-    except Exception:  # noqa: BLE001 (un fallo del verificador nunca debe marcar una fórmula)
+    except Exception:
         return None
 
 

@@ -125,7 +125,7 @@ def _layout_region(page: pymupdf.Page, region: pymupdf.Rect) -> str:
         words = list(page.get_text("words", clip=region))
         rows = _rows(words)
         tables = _find_tables(rows)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return plain
     if not tables:
         return plain

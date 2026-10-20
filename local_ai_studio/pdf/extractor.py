@@ -181,7 +181,7 @@ def _read_all_text(doc: pymupdf.Document, ecfg: dict, progress, cancel: threadin
         progress(i, total, f"Extrayendo texto... página {i + 1}/{total}")
         try:
             raw.append(_clean(layout_text(doc[i])))
-        except Exception as exc:  # noqa: BLE001  (una página rara no debe tumbar el documento entero)
+        except Exception as exc:
             log.warning("Error leyendo página %d: %s", i + 1, exc)
             raw.append("")
     if ecfg.get("remove_headers_footers", True):
@@ -225,7 +225,7 @@ class _VisionReader:
                 self._formulas(st, i, vis, vis2, original)
         except Cancelled:
             raise
-        except Exception as exc:  # noqa: BLE001  (la visión puede fallar de muchas formas: se sigue con el texto extraído)
+        except Exception as exc:
             log.warning("La visión falló en la página %d (se usa el texto extraído): %s", i + 1, exc)
         if self.phase:
             self.phase("extract")

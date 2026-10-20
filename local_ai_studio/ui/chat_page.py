@@ -34,7 +34,7 @@ from .theme import (ACCENT, BORDER, FONT, LOG_COLORS, MUTED, SURFACE, TEXT, font
 try:
     from tkinterweb import HtmlFrame
     HAS_WEB = True
-except Exception:  # noqa: BLE001
+except Exception:
     HAS_WEB = False
 
 log = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class ChatPage(ctk.CTkFrame):
         self.cfg = app.cfg
         self.store = ChatStore()
         self.engine = ChatEngine(self.cfg)
-        
+
         # --- INICIALIZACIÓN DE AUDIO (FASE 2) ---
         project_root = Path(__file__).resolve().parent.parent.parent
         model_path = project_root / "models" / "faster-whisper-small"
@@ -235,12 +235,12 @@ class ChatPage(ctk.CTkFrame):
         self.input.grid(row=0, column=0, sticky="ew")
         self.input.bind("<Return>", self._on_enter)
         self.input.bind("<Escape>", lambda e: self.cancel.set() if self.streaming else None)
-        
+
         btns = ctk.CTkFrame(box, fg_color="transparent")
         btns.grid(row=0, column=1, padx=(8, 0), sticky="ns")
         self.attach_btn = ghost_button(btns, "Imagen…", self._attach, width=96, height=30)
         self.attach_btn.pack(pady=(0, 6))
-        
+
         # --- BOTÓN DE MICRÓFONO (FASE 2) ---
         self.mic_btn = ghost_button(btns, "🎙️ Grabar", self._toggle_record, width=96, height=30)
         self.mic_btn.pack(pady=(0, 6))
@@ -254,14 +254,14 @@ class ChatPage(ctk.CTkFrame):
         self.log_btn.grid(row=6, column=0, sticky="w", pady=(4, 0))
         bottom = ctk.CTkFrame(main, fg_color="transparent")
         bottom.grid(row=6, column=0, sticky="e", pady=(4, 0))
-        
+
         # --- BOTÓN DE ESCUCHAR TTS (FASE 2) ---
         ghost_button(bottom, "🔊 Escuchar", self._speak_last, width=100, height=26).pack(side="left", padx=(0, 6))
         # --------------------------------------
 
         ghost_button(bottom, "Regenerar", self._regenerate, width=100, height=26).pack(side="left", padx=(0, 6))
         ghost_button(bottom, "Exportar .md", self._export, width=110, height=26).pack(side="left")
-        
+
         self.log_box = ctk.CTkTextbox(main, height=110, fg_color=SURFACE, corner_radius=8, text_color=TEXT, border_width=1,
                                       border_color=BORDER, font=ctk.CTkFont("Consolas", 11), state="disabled", wrap="word")
         self.on_theme()
@@ -784,17 +784,17 @@ class ChatPage(ctk.CTkFrame):
         self.mic_btn.configure(text="🎙️ Grabar", fg_color="transparent", state="disabled")
         self._stream.stop()
         self._stream.close()
-        
+
         if not self._audio_frames:
             self.mic_btn.configure(state="normal")
             return
-            
+
         self.send_btn.configure(text="Transcribiendo...", state="disabled")
-        
+
         # SEGURIDAD: Guardar en un directorio temporal con nombre aleatorio
         temp_dir = tempfile.gettempdir()
         temp_file = os.path.join(temp_dir, f"dictado_{int(time.time())}.wav")
-        
+
         try:
             with wave.open(temp_file, 'wb') as wf:
                 wf.setnchannels(1)
@@ -812,7 +812,8 @@ class ChatPage(ctk.CTkFrame):
                 result = self.transcriber.transcribe(temp_file)
                 self.after(0, self._on_dictation_done, result.text)
             except Exception as e:
-                self.after(0, lambda: messagebox.showerror("Error de dictado", str(e)))
+                error_msg = str(e)
+                self.after(0, lambda: messagebox.showerror("Error de dictado", error_msg))
                 self.after(0, self._on_dictation_done, "")
             finally:
                 # SEGURIDAD CRÍTICA: Borrar el archivo de audio inmediatamente
@@ -821,7 +822,7 @@ class ChatPage(ctk.CTkFrame):
                         os.remove(temp_file)
                     except OSError:
                         pass
-                        
+
         threading.Thread(target=process_audio, daemon=True).start()
 
     def _on_dictation_done(self, text):
@@ -836,7 +837,7 @@ class ChatPage(ctk.CTkFrame):
     def _speak_last(self):
         if getattr(self, '_is_speaking', False):
             return
-            
+
         last_msg = None
         for m in reversed(self.messages):
             if m.role == "assistant":
@@ -845,13 +846,13 @@ class ChatPage(ctk.CTkFrame):
         if not last_msg:
             messagebox.showinfo("Nada que leer", "Aún no hay respuestas del asistente.")
             return
-            
+
         # Limpiamos el markdown para que la voz no lea cosas raras
         import re
         clean_text = re.sub(r'```.*?```', ' [Bloque de código omitido] ', last_msg, flags=re.DOTALL)
         clean_text = re.sub(r'[*_#`]', '', clean_text)
         clean_text = clean_text.strip()
-        
+
         def speak():
             self._is_speaking = True
             try:
@@ -861,5 +862,5 @@ class ChatPage(ctk.CTkFrame):
                 log.error(f"Error TTS: {e}")
             finally:
                 self._is_speaking = False
-                
+
         threading.Thread(target=speak, daemon=True).start()

@@ -48,6 +48,6 @@ def load_config(auto_hardware: bool = True) -> dict:
         try:
             from .hardware_detector import apply_auto_config, installed_models
             cfg = apply_auto_config(cfg, installed_models(cfg))
-        except Exception as exc:  # noqa: BLE001  (el ajuste automático es opcional: nunca impide arrancar)
+        except Exception as exc:
             log.warning("No se pudo detectar el hardware (se usa config.yaml tal cual): %s", exc)
     return cfg

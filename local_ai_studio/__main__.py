@@ -56,7 +56,7 @@ def doctor() -> int:
         try:
             import torch as _torch
             torch = {"version": _torch.__version__, "cuda": _torch.cuda.is_available()}
-        except Exception as exc:  # noqa: BLE001  (un PyTorch roto no debe impedir el diagnóstico)
+        except Exception as exc:
             torch = {"error": str(exc)}
     steps = check_setup(cfg, torch=torch)
     print("\nPrimeros pasos:\n" + format_steps(steps))

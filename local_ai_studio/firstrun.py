@@ -35,7 +35,7 @@ def check_setup(cfg: dict, torch: dict | None = None, installed: set[str] | None
     if installed is None:
         try:
             installed = {m.model for m in get_client(cfg).list().models}
-        except Exception:  # noqa: BLE001  (cualquier fallo de conexión significa «Ollama no responde»)
+        except Exception:
             installed = None
     if installed is None:
         steps.append(Step("Ollama", False, "no responde en 127.0.0.1:11434",

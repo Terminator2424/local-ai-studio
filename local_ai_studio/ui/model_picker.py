@@ -30,15 +30,15 @@ class ModelPicker(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent")
         # SEGURIDAD: Eliminado el "or list(models)" que permitía saltarse la lista blanca si algo fallaba.
         self._models = [m for m in models if m in MODEL_INFO]
-        
+
         self._by_label = {model_label(m): m for m in self._models}
         self._command = command
-        
+
         if not self._models:
             self._current = ""
         else:
             self._current = default if default in self._models else self._models[0]
-            
+
         self.var = _IdVar(self)
         self.menu = option_menu(self, list(self._by_label), None, self._on_pick, width=width)
         self.menu.pack(anchor="w")
@@ -63,7 +63,7 @@ class ModelPicker(ctk.CTkFrame):
         if not self._current:
             self.note.configure(text="No hay modelos válidos disponibles.", text_color=WARN)
             return
-            
+
         detail = model_detail(self._current)
         if missing:
             self.note.configure(text=f"{detail}\nNo instalado: se descargará al usarlo.", text_color=WARN)

@@ -39,7 +39,7 @@ def pick_font() -> str:
         fams = set(tkfont.families(root))
         root.destroy()
         return "Inter" if "Inter" in fams else "Segoe UI"
-    except Exception:  # noqa: BLE001
+    except Exception:
         return "Segoe UI"
 
 
@@ -49,7 +49,7 @@ FONT = pick_font()
 def load_dark() -> bool:
     try:
         return bool(json.loads(UI_STATE.read_text(encoding="utf-8")).get("dark", False))
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
 
 

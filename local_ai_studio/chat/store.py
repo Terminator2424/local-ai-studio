@@ -170,7 +170,7 @@ def load_prefs(path: Path = PREFS_PATH) -> dict:
     prefs = dict(DEFAULT_PREFS)
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
+    except Exception:
         return prefs
     if not isinstance(data, dict):
         return prefs

@@ -30,7 +30,7 @@ def torch_report() -> dict:
         cuda = torch.cuda.is_available()
         return {"version": torch.__version__, "cuda": cuda, "cuda_version": torch.version.cuda,
                 "device": torch.cuda.get_device_name(0) if cuda else None}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
@@ -134,7 +134,7 @@ class SettingsPage(ctk.CTkFrame):
             running = self.manager.running_llms()
             data = {"info": info, "installed": installed, "running": running,
                     "cfg": hw.describe(self.cfg), "storage": storage.usage()}
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             data = {"error": str(exc)}
         self.q.put(("data", data))
         report = torch_report()
@@ -280,7 +280,7 @@ class SettingsPage(ctk.CTkFrame):
             self.engine.pull(name, lambda f, s: self.q.put(("pull", f"{name}: {s}" + (f" {f * 100:.0f} %" if f else ""))),
                              self.cancel)
             self.q.put(("pull_done", name))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.q.put(("pull_error", f"{type(exc).__name__}: {exc}"))
 
     def _verify(self, m):

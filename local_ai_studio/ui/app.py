@@ -25,7 +25,7 @@ from .theme import ACCENT, BG, BORDER, MUTED, SURFACE, TEXT, font
 try:  # arrastrar y soltar (opcional)
     from tkinterdnd2 import DND_FILES, TkinterDnD
     HAS_DND = True
-except Exception:  # noqa: BLE001
+except Exception:
     HAS_DND = False
 
 log = logging.getLogger(__name__)
@@ -105,17 +105,17 @@ class StudioApp(_Base):
                               hover_color=BORDER, text_color=TEXT, font=font(14), command=lambda k=key: self.show(k))
             b.pack(fill="x", padx=12, pady=2)
             self.nav[key] = b
-            
+
         self.dark_switch = ctk.CTkSwitch(side, text="Modo oscuro", command=self._toggle_dark, progress_color=ACCENT,
                                          font=font(12), text_color=MUTED)
         self.dark_switch.pack(side="bottom", anchor="w", padx=20, pady=20)
         if self.dark:
             self.dark_switch.select()
-            
+
         # --- BOTÓN DE LIBERAR VRAM (Acceso rápido) ---
         self.btn_free_vram = ctk.CTkButton(
-            side, text="🧹 Liberar VRAM", command=self._free_vram, 
-            fg_color="transparent", hover_color=BORDER, text_color=MUTED, 
+            side, text="🧹 Liberar VRAM", command=self._free_vram,
+            fg_color="transparent", hover_color=BORDER, text_color=MUTED,
             anchor="w", font=font(12)
         )
         self.btn_free_vram.pack(side="bottom", fill="x", padx=12, pady=(0, 10))
@@ -186,7 +186,7 @@ class StudioApp(_Base):
             info = hardware_detector._nvml()
             if info is not None:
                 free = f"VRAM libre {info.vram_free_gb:.1f} de {info.vram_total_gb:.1f} GB"
-        except Exception as exc:  # noqa: BLE001  (la barra de estado es informativa: nunca debe romper la ventana)
+        except Exception as exc:
             log.debug("No se pudo leer la VRAM: %s", exc)
         mem = f"En memoria: {self._state_text}" if self._state_text != "libre" else "Sin modelo cargado"
         job = f"Trabajando: {self.manager.current_job}" if self.manager.current_job else ""
@@ -249,7 +249,7 @@ class StudioApp(_Base):
         try:
             self.drop_target_register(DND_FILES)
             self.dnd_bind("<<Drop>>", self._on_drop)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("Drag & drop no disponible: %s", exc)
 
     def _on_drop(self, event):

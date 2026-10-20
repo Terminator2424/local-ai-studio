@@ -63,11 +63,11 @@ def _ram_gb() -> float:
         st.dwLength = ctypes.sizeof(MEMSTATUS)
         ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st))
         return round(st.ullTotalPhys / 1024 ** 3, 1)
-    except Exception:  # noqa: BLE001
+    except Exception:
         try:
             sysconf = os.sysconf  # type: ignore[attr-defined]   # solo existe fuera de Windows
             return round(sysconf("SC_PAGE_SIZE") * sysconf("SC_PHYS_PAGES") / 1024 ** 3, 1)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return 0.0
 
 
@@ -86,7 +86,7 @@ def _nvml() -> HardwareInfo | None:
                                 source="NVML")
         finally:
             pynvml.nvmlShutdown()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.info("NVML no disponible: %s", exc)
         return None
 
@@ -101,7 +101,7 @@ def _nvidia_smi() -> HardwareInfo | None:
             return None
         name, total, free = [x.strip() for x in out.stdout.strip().splitlines()[0].split(",")]
         return HardwareInfo(name, "nvidia", round(float(total) / 1024, 2), round(float(free) / 1024, 2), source="nvidia-smi")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.info("nvidia-smi no disponible: %s", exc)
         return None
 
@@ -115,7 +115,7 @@ def _other_gpu() -> str:
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         names = [n.strip() for n in out.stdout.splitlines() if n.strip()]
         return names[0] if names else ""
-    except Exception:  # noqa: BLE001
+    except Exception:
         return ""
 
 
@@ -160,7 +160,7 @@ def ollama_has_models_loaded(cfg: dict) -> bool:
     try:
         from .ollama_client import get_client
         return bool(get_client(cfg).ps().models)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
 
 
@@ -286,6 +286,6 @@ def installed_models(cfg: dict) -> set[str]:
     try:
         from .ollama_client import get_client
         return {m.model for m in get_client(cfg).list().models}
-    except Exception:  # noqa: BLE001
+    except Exception:
         return set()
 

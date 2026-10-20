@@ -39,7 +39,7 @@ def _is_prompt_injection_attempt(text: str) -> bool:
             return True
     return False
 
-def _log_security_event(event_type: str, details: str, user_text: str = None) -> None:
+def _log_security_event(event_type: str, details: str, user_text: str | None = None) -> None:
     log_message = f"[SECURITY] {event_type}: {details}"
     if user_text is not None:
         truncated = user_text[:100] + ("..." if len(user_text) > 100 else "")
@@ -160,17 +160,17 @@ class ChatEngine:
         try:
             # Obtenemos la lista de modelos de Ollama
             found_raw = {m.model for m in get_client(self.cfg).list().models}
-            
+
             # FIX: Si un modelo termina en ":latest", lo agregamos también sin el ":latest"
             # para que coincida con los nombres de nuestra lista MODEL_INFO
             found = set(found_raw)
             for m in found_raw:
                 if m.endswith(":latest"):
                     found.add(m[:-7]) # Quita los 7 caracteres de ":latest"
-                    
-        except Exception:  # noqa: BLE001
+
+        except Exception:
             return set()                    # sin respuesta: no se recuerda, se reintentará en la siguiente consulta
-            
+
         self._installed = (now, found)
         return set(found)
 

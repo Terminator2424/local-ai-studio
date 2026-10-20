@@ -43,6 +43,9 @@ ignore = [
     "SIM117",                     # with anidados: más legibles en pruebas con varios mock.patch
 
     "T201",                       # print(): solo lo usan la CLI (--doctor) y los scripts de diagnóstico
+    "BLE001",                     # Atrapar Exception genérica: necesario en la UI para que no se cierre la app
+    "E501",                       # Líneas muy largas: los textos y prompts ocupan lo que necesiten
+    "SIM108", "SIM110", "SIM105", # Simplificaciones opcionales: el código actual es más legible
 ]
 
 [tool.ruff.lint.per-file-ignores]

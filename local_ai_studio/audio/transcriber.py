@@ -41,23 +41,22 @@ class AudioTranscriber:
         if self._model is None:
             log.info(f"Cargando modelo Whisper {self.model_size} en {self.device}...")
             self._model = WhisperModel(
-                self.model_size, 
-                device=self.device, 
+                self.model_size,
+                device=self.device,
                 compute_type=self.compute_type,
                 local_files_only=True # Seguridad: No intenta descargar nada de internet
             )
         return self._model
 
-    def transcribe(self, audio_path: str | Path, cancel_event: threading.Event = None, on_text=None) -> TranscribeResult:
-        """Transcribe un archivo de audio y devuelve el texto con timestamps."""
-        
+    def transcribe(self, audio_path: str | Path, cancel_event: threading.Event | None = None, on_text=None) -> TranscribeResult:
+
         # ESCUDO DE SEGURIDAD
         safe_path = _validate_audio_path(audio_path)
-        
+
         model = self.load_model()
-        
+
         segments, info = model.transcribe(
-            str(safe_path), 
+            str(safe_path),
             beam_size=5,
             language=None  # Auto-detectar idioma
         )
@@ -67,20 +66,20 @@ class AudioTranscriber:
             if cancel_event and cancel_event.is_set():
                 log.warning("Transcripción cancelada por el usuario.")
                 break
-            
+
             # --- LÓGICA DE TIMESTAMPS ---
             start_sec = int(segment.start)
             mins, secs = divmod(start_sec, 60)
             hours, mins = divmod(mins, 60)
-            
+
             if hours > 0:
                 timestamp = f"[{hours:02d}:{mins:02d}:{secs:02d}]"
             else:
                 timestamp = f"[{mins:02d}:{secs:02d}]"
-                
+
             formatted_text = f"{timestamp} {segment.text.strip()}"
             text_parts.append(formatted_text)
-            
+
             if on_text:
                 on_text(formatted_text + "\n")
 

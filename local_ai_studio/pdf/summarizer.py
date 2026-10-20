@@ -356,7 +356,7 @@ class Summarizer:
             tldr, _ = scrub_text_numbers(tldr, "\n".join(p.raw + "\n" + p.text for p in pages))
         except Cancelled:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log(f"⚠ No se pudo redactar la descripción breve: {exc}")
 
         lb = self.prompts["labels"]
@@ -467,7 +467,7 @@ class Summarizer:
                     cache.save(pdf_hash, "fig", fkey, figures)
                 except Cancelled:
                     raise
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     log.warning("No se pudo describir la página %d: %s", pn, exc)
                     self._log(f"⚠ No se pudo describir la página {pn}: {exc}")
         finally:

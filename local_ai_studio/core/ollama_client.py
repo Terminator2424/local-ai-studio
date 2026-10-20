@@ -78,7 +78,7 @@ def check_ollama(cfg: dict, need_vision: bool = True) -> None:
     client = get_client(cfg)
     try:
         listing = client.list()
-    except Exception:  # noqa: BLE001  (cualquier fallo de conexión significa «no responde»)
+    except Exception:
         log.info("Ollama no responde; intentando iniciar 'ollama serve'...")
         try:
             # Siempre en loopback (ver la nota de seguridad de arriba); sin shell=True
@@ -91,7 +91,7 @@ def check_ollama(cfg: dict, need_vision: bool = True) -> None:
             try:
                 listing = client.list()
                 break
-            except Exception:  # noqa: BLE001, S112  (aún arrancando: se vuelve a intentar)
+            except Exception:  # noqa: S112  (aún arrancando: se vuelve a intentar)
                 continue
         else:
             raise RuntimeError("Ollama no responde en 127.0.0.1:11434.") from None
@@ -134,7 +134,7 @@ def chat_stream(cfg: dict, model: str, messages: list[dict], options: dict,
             return text
         except Cancelled:
             raise
-        except Exception as exc:  # noqa: BLE001  (red, servidor, modelo…: se decide abajo si se reintenta)
+        except Exception as exc:
             last_exc = exc
             log.warning("Fallo en llamada a %s (intento %d/%d): %s", model, attempt + 1, retries + 1, exc)
             if getattr(exc, "status_code", None) in _PERMANENT_ERRORS:
