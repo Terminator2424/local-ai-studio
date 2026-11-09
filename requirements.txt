@@ -1,4 +1,4 @@
-﻿# Local AI Studio: dependencias de EJECUCIÓN (Python 3.12, Windows 10/11).
+# Local AI Studio: dependencias de EJECUCIÓN (Python 3.12, Windows 10/11).
 # Cubren resumir PDF, documentos, chat, estudiar y editar imágenes.
 #   Para GENERAR imágenes añade también requirements-images.txt.
 #   Para desarrollar (pruebas, estilo, seguridad) usa requirements-dev.txt.
@@ -14,7 +14,7 @@ numpy>=2,<3
 sympy>=1.13,<2               # verificación simbólica de fórmulas
 markdown-it-py>=3,<5
 python-docx>=1,<2            # exportación a Word
-huggingface_hub>=0.30,<2     # solo para las descargas de modelos de imágenes que confirmas
+huggingface_hub>=2.2.0,<3     # solo para las descargas de modelos de imágenes que confirmas
 
 # --- Interfaz
 customtkinter>=5.2,<7
